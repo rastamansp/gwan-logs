@@ -15,11 +15,8 @@ services:
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
       - ./configs/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
-    ports:
-      - "9200:9200"
-      - "9300:9300"
     networks:
-      - gwan-logs-network
+      - gwan
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
@@ -40,10 +37,8 @@ services:
     volumes:
       - ./configs/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
       - kibana_data:/usr/share/kibana/data
-    ports:
-      - "5601:5601"
     networks:
-      - gwan-logs-network
+      - gwan
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -53,6 +48,14 @@ services:
       interval: 30s
       timeout: 10s
       retries: 5
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kibana.rule=Host(`logs.gwan.com.br`)"
+      - "traefik.http.routers.kibana.entrypoints=websecure"
+      - "traefik.http.routers.kibana.tls.certresolver=letsencrypt"
+      - "traefik.http.services.kibana.loadbalancer.server.port=5601"
+      - "traefik.http.routers.kibana.middlewares=kibana-auth"
+      - "traefik.http.middlewares.kibana-auth.basicauth.users=elastic:$$2y$$10$${ELASTIC_PASSWORD_HASH}"
 
   # Filebeat - Coleta de logs dos containers
   filebeat:
@@ -66,7 +69,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - filebeat_data:/usr/share/filebeat/data
     networks:
-      - gwan-logs-network
+      - gwan
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -89,13 +92,8 @@ services:
       - ./configs/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
       - ./configs/logstash/pipeline:/usr/share/logstash/pipeline:ro
       - logstash_data:/usr/share/logstash/data
-    ports:
-      - "5044:5044"
-      - "5000:5000/tcp"
-      - "5000:5000/udp"
-      - "9600:9600"
     networks:
-      - gwan-logs-network
+      - gwan
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -105,28 +103,6 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  # Monitoramento básico do sistema (opcional)
-  # Removido Prometheus - será um módulo separado
-  # Para monitoramento completo, use o módulo gwan-monitoring
-
-  # Nginx - Proxy reverso para logs.gwan.com.br
-  nginx:
-    image: nginx:alpine
-    container_name: gwan-nginx
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./configs/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-      - ./configs/nginx/conf.d:/etc/nginx/conf.d:ro
-      - ./configs/nginx/ssl:/etc/nginx/ssl:ro
-    networks:
-      - gwan-logs-network
-    depends_on:
-      - kibana
-      - elasticsearch
-    restart: unless-stopped
 
 volumes:
   elasticsearch_data:
@@ -156,8 +132,5 @@ volumes:
   # prometheus_data removido - será parte do módulo de monitoramento separado
 
 networks:
-  gwan-logs-network:
-    driver: bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
+  gwan:
+    external: true
