@@ -107,29 +107,12 @@ services:
 volumes:
   elasticsearch_data:
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /opt/gwan-logs/elasticsearch
   kibana_data:
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /opt/gwan-logs/kibana
   filebeat_data:
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /opt/gwan-logs/filebeat
   logstash_data:
     driver: local
-    driver_opts:
-      type: none
-      o: bind
-      device: /opt/gwan-logs/logstash
-  # prometheus_data removido - será parte do módulo de monitoramento separado
 
 networks:
   gwan:
