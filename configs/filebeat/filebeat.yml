@@ -1,0 +1,150 @@
+# Configuração do Filebeat para Gwan Logs
+
+filebeat.inputs:
+  # Coleta de logs dos containers Docker
+  - type: container
+    paths:
+      - '/var/lib/docker/containers/*/*.log'
+    processors:
+      - add_docker_metadata:
+          host: "unix:///var/run/docker.sock"
+      - decode_json_fields:
+          fields: ["message"]
+          target: "json"
+          overwrite_keys: true
+      - add_fields:
+          fields:
+            environment: "production"
+            cluster: "gwan-logs"
+            service: "filebeat"
+
+  # Coleta de logs de aplicações específicas
+  - type: log
+    enabled: true
+    paths:
+      - "/var/log/docker/*.log"
+    fields:
+      log_type: "application"
+    fields_under_root: true
+    multiline.pattern: '^\['
+    multiline.negate: true
+    multiline.match: after
+
+  # Coleta de logs do sistema
+  - type: log
+    enabled: true
+    paths:
+      - "/var/log/syslog"
+      - "/var/log/auth.log"
+    fields:
+      log_type: "system"
+    fields_under_root: true
+
+# Processors globais
+processors:
+  - add_host_metadata:
+      when.not.contains.tags: forwarded
+  - add_cloud_metadata: ~
+  - add_docker_metadata:
+      host: "unix:///var/run/docker.sock"
+  - add_kubernetes_metadata:
+      host: ${NODE_NAME}
+      in_cluster: false
+  - drop_event:
+      when:
+        or:
+          - equals:
+              log_type: "debug"
+          - contains:
+              message: "password"
+          - contains:
+              message: "secret"
+          - contains:
+              message: "token"
+
+# Configurações de output
+output.elasticsearch:
+  hosts: ["elasticsearch:9200"]
+  username: "elastic"
+  password: "${ELASTIC_PASSWORD}"
+  index: "gwan-logs-%{+yyyy.MM.dd}"
+  indices:
+    - index: "gwan-logs-error-%{+yyyy.MM.dd}"
+      when.contains:
+        message: "ERROR"
+    - index: "gwan-logs-warn-%{+yyyy.MM.dd}"
+      when.contains:
+        message: "WARN"
+    - index: "gwan-logs-info-%{+yyyy.MM.dd}"
+      when.contains:
+        message: "INFO"
+    - index: "gwan-logs-debug-%{+yyyy.MM.dd}"
+      when.contains:
+        message: "DEBUG"
+
+# Configurações de template
+setup.template.name: "gwan-logs"
+setup.template.pattern: "gwan-logs-*"
+setup.template.settings:
+  index.number_of_shards: 1
+  index.number_of_replicas: 0
+  index.refresh_interval: "5s"
+
+# Configurações de ILM (Index Lifecycle Management)
+setup.ilm.enabled: true
+setup.ilm.rollover_alias: "gwan-logs"
+setup.ilm.policy_name: "gwan-logs-policy"
+
+# Configurações de monitoramento
+monitoring.enabled: true
+monitoring.metrics.enabled: true
+monitoring.logs.enabled: true
+
+# Configurações de logging
+logging.level: info
+logging.to_files: false
+logging.to_syslog: false
+logging.metrics.enabled: false
+
+# Configurações de queue
+queue.spool: ~
+
+# Configurações de registry
+registry.path: "/usr/share/filebeat/data/registry"
+
+# Configurações de reload
+reload.enabled: true
+reload.period: 10s
+
+# Configurações de prospector
+filebeat.prospectors:
+  - type: log
+    enabled: true
+    paths:
+      - "/var/log/docker/*.log"
+    scan_frequency: 10s
+    harvester_limit: 0
+    max_bytes: 10485760  # 10MB
+    close_inactive: 5m
+    close_rename: true
+    close_removed: true
+    close_eof: false
+    clean_inactive: 72h
+    clean_removed: true
+    ignore_older: 24h
+    scan_sort: modtime
+    scan_order: desc
+    tail_files: true
+    backoff: 1s
+    max_backoff: 1m
+    backoff_factor: 2
+    harvester_buffer_size: 16384
+    max_message_size: 1048576  # 1MB
+    json.keys_under_root: true
+    json.add_error_key: true
+    json.message_key: log
+    multiline.pattern: '^\['
+    multiline.negate: true
+    multiline.match: after
+    multiline.max_lines: 500
+    multiline.timeout: 5s

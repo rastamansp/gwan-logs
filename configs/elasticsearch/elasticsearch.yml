@@ -1,0 +1,79 @@
+# Configuração do Elasticsearch para Gwan Logs
+
+# Configurações básicas
+cluster.name: gwan-logs
+node.name: gwan-node-1
+node.master: true
+node.data: true
+
+# Configurações de rede
+network.host: 0.0.0.0
+http.port: 9200
+transport.port: 9300
+
+# Configurações de descoberta
+discovery.type: single-node
+discovery.seed_hosts: []
+
+# Configurações de segurança
+xpack.security.enabled: true
+xpack.security.transport.ssl.enabled: false
+xpack.security.http.ssl.enabled: false
+
+# Configurações de índices
+action.auto_create_index: true
+index.number_of_shards: 1
+index.number_of_replicas: 0
+
+# Configurações de logs
+path.logs: /var/log/elasticsearch
+logger.level: INFO
+
+# Configurações de memória
+bootstrap.memory_lock: true
+
+# Configurações de cluster
+cluster.routing.allocation.disk.threshold_enabled: true
+cluster.routing.allocation.disk.watermark.low: 85%
+cluster.routing.allocation.disk.watermark.high: 90%
+cluster.routing.allocation.disk.watermark.flood_stage: 95%
+
+# Configurações de snapshots
+path.repo: ["/usr/share/elasticsearch/data/backups"]
+
+# Configurações de monitoramento
+xpack.monitoring.enabled: true
+xpack.monitoring.collection.enabled: true
+
+# Configurações de alertas
+xpack.watcher.enabled: true
+
+# Configurações de machine learning
+xpack.ml.enabled: true
+
+# Configurações de transformações
+xpack.transform.enabled: true
+
+# Configurações de gráficos
+xpack.graph.enabled: true
+
+# Configurações de relatórios
+xpack.reporting.enabled: true
+
+# Configurações de canvas
+xpack.canvas.enabled: true
+
+# Configurações de uptime
+xpack.uptime.enabled: true
+
+# Configurações de APM
+xpack.apm.enabled: true
+
+# Configurações de maps
+xpack.maps.enabled: true
+
+# Configurações de stack monitoring
+xpack.monitoring.elasticsearch.collection.enabled: true
+xpack.monitoring.kibana.collection.enabled: true
+xpack.monitoring.logstash.collection.enabled: true
+xpack.monitoring.beats.collection.enabled: true

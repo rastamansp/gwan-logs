@@ -1,0 +1,96 @@
+# Configuração do Kibana para Gwan Logs
+
+# Configurações básicas
+server.name: gwan-kibana
+server.host: 0.0.0.0
+server.port: 5601
+
+# Configurações do Elasticsearch
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+elasticsearch.username: elastic
+elasticsearch.password: ${ELASTIC_PASSWORD}
+
+# Configurações de segurança
+elasticsearch.ssl.verify: false
+xpack.security.enabled: true
+xpack.security.encryptionKey: "something_at_least_32_characters_long"
+
+# Configurações de monitoramento
+xpack.monitoring.enabled: true
+xpack.monitoring.ui.container.elasticsearch.enabled: true
+xpack.monitoring.ui.container.logstash.enabled: true
+
+# Configurações de alertas
+xpack.alerting.enabled: true
+xpack.actions.enabled: true
+xpack.triggersActionsUi.enabled: true
+
+# Configurações de machine learning
+xpack.ml.enabled: true
+
+# Configurações de transformações
+xpack.transform.enabled: true
+
+# Configurações de gráficos
+xpack.graph.enabled: true
+
+# Configurações de relatórios
+xpack.reporting.enabled: true
+xpack.reporting.kibanaServer.hostname: "kibana.gwan.com.br"
+xpack.reporting.kibanaServer.port: 443
+xpack.reporting.kibanaServer.protocol: "https"
+
+# Configurações de canvas
+xpack.canvas.enabled: true
+
+# Configurações de uptime
+xpack.uptime.enabled: true
+
+# Configurações de APM
+xpack.apm.enabled: true
+xpack.apm.ui.enabled: true
+
+# Configurações de maps
+xpack.maps.enabled: true
+
+# Configurações de logs
+logging.verbose: false
+logging.dest: stdout
+
+# Configurações de telemetria
+telemetry.enabled: false
+
+# Configurações de plugins
+plugins.scanDirs: ["/usr/share/kibana/plugins"]
+
+# Configurações de otimização
+optimize.bundleFilter: ["!tests", "!test", "!**/__tests__/**", "!**/*.test.js", "!**/*.test.ts"]
+
+# Configurações de cache
+optimize.useBundleCache: true
+
+# Configurações de sessão
+xpack.security.session.idleTimeout: "1h"
+xpack.security.session.lifespan: "24h"
+
+# Configurações de autenticação
+xpack.security.authc.providers: ["basic", "token"]
+xpack.security.authc.basic.order: 0
+
+# Configurações de autorização
+xpack.security.authz.enabled: true
+
+# Configurações de audit
+xpack.security.audit.enabled: true
+xpack.security.audit.appender.type: "console"
+xpack.security.audit.appender.layout.type: "pattern"
+xpack.security.audit.appender.layout.pattern: "[%d{ISO8601}][%-5p][%-25c{1.}] %m%n"
+
+# Configurações de notificações
+xpack.notifications.enabled: true
+
+# Configurações de stack monitoring
+xpack.monitoring.kibana.collection.enabled: true
+xpack.monitoring.elasticsearch.collection.enabled: true
+xpack.monitoring.logstash.collection.enabled: true
+xpack.monitoring.beats.collection.enabled: true

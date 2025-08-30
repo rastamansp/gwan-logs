@@ -1,0 +1,163 @@
+version: '3.8'
+
+services:
+  # Elasticsearch - Armazenamento de logs
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: gwan-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=true
+      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
+      - "ES_JAVA_OPTS=-Xms2g -Xmx2g"
+      - cluster.name=gwan-logs
+      - node.name=gwan-node-1
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+      - ./configs/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    networks:
+      - gwan-logs-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Kibana - Interface de visualização
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    container_name: gwan-kibana
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+      - SERVER_NAME=gwan-kibana
+      - SERVER_HOST=0.0.0.0
+    volumes:
+      - ./configs/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
+      - kibana_data:/usr/share/kibana/data
+    ports:
+      - "5601:5601"
+    networks:
+      - gwan-logs-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Filebeat - Coleta de logs dos containers
+  filebeat:
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    container_name: gwan-filebeat
+    user: root
+    volumes:
+      - ./configs/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/log/docker:/var/log/docker:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - filebeat_data:/usr/share/filebeat/data
+    networks:
+      - gwan-logs-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep filebeat || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Logstash - Processamento e filtros (opcional)
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    container_name: gwan-logstash
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - ELASTICSEARCH_USERNAME=elastic
+      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+    volumes:
+      - ./configs/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./configs/logstash/pipeline:/usr/share/logstash/pipeline:ro
+      - logstash_data:/usr/share/logstash/data
+    ports:
+      - "5044:5044"
+      - "5000:5000/tcp"
+      - "5000:5000/udp"
+      - "9600:9600"
+    networks:
+      - gwan-logs-network
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9600/_node/stats || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Monitoramento básico do sistema (opcional)
+  # Removido Prometheus - será um módulo separado
+  # Para monitoramento completo, use o módulo gwan-monitoring
+
+  # Nginx - Proxy reverso para logs.gwan.com.br
+  nginx:
+    image: nginx:alpine
+    container_name: gwan-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./configs/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./configs/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./configs/nginx/ssl:/etc/nginx/ssl:ro
+    networks:
+      - gwan-logs-network
+    depends_on:
+      - kibana
+      - elasticsearch
+    restart: unless-stopped
+
+volumes:
+  elasticsearch_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/gwan-logs/elasticsearch
+  kibana_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/gwan-logs/kibana
+  filebeat_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/gwan-logs/filebeat
+  logstash_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /opt/gwan-logs/logstash
+  # prometheus_data removido - será parte do módulo de monitoramento separado
+
+networks:
+  gwan-logs-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16

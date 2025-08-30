@@ -1,0 +1,54 @@
+# Gwan Logs - Regras do Cursor
+
+## Contexto do Projeto
+Este é um projeto de sistema de logs centralizado para aplicações Node.js e Python rodando no Portainer, utilizando Elasticsearch, Kibana e Filebeat.
+
+## Regras Gerais
+- Sempre responda em português brasileiro
+- Mantenha o código bem documentado e organizado
+- Use nomes de variáveis e funções descritivos em português quando apropriado
+- Siga as melhores práticas de Docker e containerização
+
+## Estrutura do Projeto
+- `docker-compose.yml`: Stack principal do Elasticsearch + Kibana + Filebeat
+- `configs/`: Configurações específicas de cada serviço
+- `scripts/`: Scripts de backup, monitoramento e manutenção
+- `docs/`: Documentação técnica e guias de uso
+- `examples/`: Exemplos de configuração para aplicações Node.js e Python
+
+## Padrões de Código
+- Use YAML para configurações Docker
+- Use JSON para configurações do Elasticsearch
+- Use JavaScript/TypeScript para scripts Node.js
+- Use Python para scripts Python
+- Mantenha arquivos de configuração organizados por serviço
+
+## Segurança
+- Nunca commite senhas ou chaves privadas
+- Use variáveis de ambiente para configurações sensíveis
+- Mantenha logs sensíveis filtrados
+- Configure autenticação adequada para todos os serviços
+
+## Monitoramento
+- Configure alertas para problemas críticos
+- Mantenha métricas de performance
+- Implemente backup automático
+- Configure retenção de logs adequada
+
+## Escalabilidade
+- Configure recursos adequados para cada serviço
+- Use volumes persistentes para dados importantes
+- Configure políticas de retenção de logs
+- Mantenha configurações que suportem crescimento
+
+## Manutenção
+- Documente procedimentos de backup e restore
+- Mantenha scripts de limpeza de logs antigos
+- Configure monitoramento de recursos do sistema
+- Documente procedimentos de troubleshooting
+
+## Integração
+- Mantenha compatibilidade com aplicações Node.js e Python
+- Configure Filebeat para coletar logs de containers
+- Mantenha exemplos de configuração atualizados
+- Documente processo de integração com novas aplicações
