@@ -13,7 +13,7 @@ services:
       - cluster.name=gwan-logs
       - node.name=gwan-node-1
     volumes:
-      - elasticsearch_data:/usr/share/elasticsearch/data
+      - es_data:/usr/share/elasticsearch/data
     networks:
       - gwan
     restart: unless-stopped
@@ -34,7 +34,7 @@ services:
       - SERVER_NAME=gwan-kibana
       - SERVER_HOST=0.0.0.0
     volumes:
-      - kibana_data:/usr/share/kibana/data
+      - kb_data:/usr/share/kibana/data
     networks:
       - gwan
     depends_on:
@@ -54,8 +54,8 @@ services:
       - "traefik.http.services.kibana.loadbalancer.server.port=5601"
 
 volumes:
-  elasticsearch_data:
-  kibana_data:
+  es_data:
+  kb_data:
 
 networks:
   gwan:
