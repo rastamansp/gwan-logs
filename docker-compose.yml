@@ -53,59 +53,9 @@ services:
       - "traefik.http.routers.kibana.tls.certresolver=letsencrypt"
       - "traefik.http.services.kibana.loadbalancer.server.port=5601"
 
-  # Filebeat - Coleta de logs dos containers
-  filebeat:
-    image: docker.elastic.co/beats/filebeat:8.11.0
-    container_name: gwan-filebeat
-    user: root
-    volumes:
-      - /var/lib/docker/containers:/var/lib/docker/containers:ro
-      - /var/log/docker:/var/log/docker:ro
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - filebeat_data:/usr/share/filebeat/data
-    networks:
-      - gwan
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pgrep filebeat || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  # Logstash - Processamento e filtros (opcional)
-  logstash:
-    image: docker.elastic.co/logstash/logstash:8.11.0
-    container_name: gwan-logstash
-    environment:
-      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
-    volumes:
-      - logstash_data:/usr/share/logstash/data
-    networks:
-      - gwan
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9600/_node/stats || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
 volumes:
   elasticsearch_data:
-    driver: local
   kibana_data:
-    driver: local
-  filebeat_data:
-    driver: local
-  logstash_data:
-    driver: local
 
 networks:
   gwan:
