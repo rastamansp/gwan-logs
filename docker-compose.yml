@@ -14,7 +14,6 @@ services:
       - node.name=gwan-node-1
     volumes:
       - elasticsearch_data:/usr/share/elasticsearch/data
-      - ./configs/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml:ro
     networks:
       - gwan
     restart: unless-stopped
@@ -35,7 +34,6 @@ services:
       - SERVER_NAME=gwan-kibana
       - SERVER_HOST=0.0.0.0
     volumes:
-      - ./configs/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
       - kibana_data:/usr/share/kibana/data
     networks:
       - gwan
@@ -54,8 +52,6 @@ services:
       - "traefik.http.routers.kibana.entrypoints=websecure"
       - "traefik.http.routers.kibana.tls.certresolver=letsencrypt"
       - "traefik.http.services.kibana.loadbalancer.server.port=5601"
-      - "traefik.http.routers.kibana.middlewares=kibana-auth"
-      - "traefik.http.middlewares.kibana-auth.basicauth.users=elastic:$$2y$$10$${ELASTIC_PASSWORD_HASH}"
 
   # Filebeat - Coleta de logs dos containers
   filebeat:
@@ -63,7 +59,6 @@ services:
     container_name: gwan-filebeat
     user: root
     volumes:
-      - ./configs/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro
       - /var/log/docker:/var/log/docker:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -89,8 +84,6 @@ services:
       - ELASTICSEARCH_USERNAME=elastic
       - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
     volumes:
-      - ./configs/logstash/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
-      - ./configs/logstash/pipeline:/usr/share/logstash/pipeline:ro
       - logstash_data:/usr/share/logstash/data
     networks:
       - gwan
