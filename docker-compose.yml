@@ -9,27 +9,18 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=true
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
-      - cluster.name=gwan-logs
-      - node.name=gwan-node-1
-      - bootstrap.memory_lock=true
-      - "indices.memory.index_buffer_size=30%"
-      - "cluster.routing.allocation.disk.threshold_enabled=false"
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     volumes:
       - es_data:/usr/share/elasticsearch/data
     networks:
       - gwan
     restart: unless-stopped
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
       interval: 60s
       timeout: 30s
       retries: 10
-      start_period: 120s
+      start_period: 180s
 
   # Kibana - Interface de visualização
   kibana:
