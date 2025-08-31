@@ -1,0 +1,8 @@
+# Configuração de Pipelines do Logstash
+# Este arquivo define quais pipelines estão ativos
+
+- pipeline.id: main
+  path.config: "/usr/share/logstash/pipeline"
+  pipeline.workers: 1
+  pipeline.batch.size: 50
+  pipeline.batch.delay: 100

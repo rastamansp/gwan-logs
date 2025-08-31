@@ -8,7 +8,7 @@ services:
       - xpack.security.enabled=false
       - xpack.security.enrollment.enabled=false
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - "ES_JAVA_OPTS=-Xms256m -Xmx512m"
       - ingest.geoip.downloader.enabled=false
       - cluster.routing.allocation.disk.threshold_enabled=false
       - bootstrap.memory_lock=false
@@ -25,6 +25,45 @@ services:
       timeout: 120s
       retries: 2
       start_period: 900s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.elasticsearch.rule=Host(`${ELASTICSEARCH_DOMAIN}`)"
+      - "traefik.http.routers.elasticsearch.entrypoints=web"
+      - "traefik.http.services.elasticsearch.loadbalancer.server.port=9200"
+
+  # Logstash - Processamento de logs
+  logstash:
+    image: docker.elastic.co/logstash/logstash:8.9.1
+    container_name: gwan-logstash
+    environment:
+      - ELASTICSEARCH_HOSTS=${LOGSTASH_ELASTICSEARCH_HOSTS}
+      - ELASTICSEARCH_USERNAME=${LOGSTASH_ELASTICSEARCH_USERNAME}
+      - ELASTICSEARCH_PASSWORD=${LOGSTASH_ELASTICSEARCH_PASSWORD}
+      - LS_JAVA_OPTS=-Xms256m -Xmx512m
+    volumes:
+      - ls_data:/usr/share/logstash/data
+      - ./configs/logstash/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
+      - ./configs/logstash/pipelines:/usr/share/logstash/pipeline:ro
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    networks:
+      - gwan
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9600/_node/stats || exit 1"]
+      interval: 300s
+      timeout: 120s
+      retries: 3
+      start_period: 600s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.logstash.rule=Host(`${LOGSTASH_DOMAIN}`)"
+      - "traefik.http.routers.logstash.entrypoints=web"
+      - "traefik.http.services.logstash.loadbalancer.server.port=9600"
 
   # Kibana - Interface de visualização
   kibana:
@@ -51,10 +90,16 @@ services:
       timeout: 120s
       retries: 3
       start_period: 1200s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kibana.rule=Host(`${KIBANA_DOMAIN}`)"
+      - "traefik.http.routers.kibana.entrypoints=web"
+      - "traefik.http.services.kibana.loadbalancer.server.port=5601"
 
 volumes:
   es_data:
   kb_data:
+  ls_data:
 
 networks:
   gwan:
