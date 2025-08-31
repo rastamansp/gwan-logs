@@ -10,6 +10,7 @@ services:
       - xpack.security.enabled=true
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - ingest.geoip.downloader.enabled=false
     volumes:
       - es_data_v7:/usr/share/elasticsearch/data
     networks:
