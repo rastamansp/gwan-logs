@@ -1,0 +1,22 @@
+{
+  "name": "gwan-logs-test-app",
+  "version": "1.0.0",
+  "description": "Aplicação de teste para enviar logs para o stack ELK",
+  "main": "test-app.js",
+  "scripts": {
+    "start": "node test-app.js",
+    "test": "node test-app.js"
+  },
+  "keywords": [
+    "logs",
+    "elk",
+    "logstash",
+    "elasticsearch",
+    "kibana"
+  ],
+  "author": "Gwan Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
