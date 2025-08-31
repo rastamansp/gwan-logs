@@ -8,325 +8,218 @@ Integração com Elasticsearch para Gwan Logs
 import logging
 import json
 import os
-import sys
-from datetime import datetime
-from typing import Dict, Any, Optional
-from pythonjsonlogger import jsonlogger
-from elasticsearch import Elasticsearch
 import socket
-import uuid
+from datetime import datetime
+from elasticsearch import Elasticsearch
+from pythonjsonlogger import jsonlogger
 
 class GwanLogger:
-    """Logger personalizado para integração com Gwan Logs"""
+    """
+    Logger personalizado para aplicações Gwan com formato estruturado
+    """
     
-    def __init__(self, 
-                 service_name: str = None,
-                 environment: str = None,
-                 version: str = None,
-                 elasticsearch_url: str = None,
-                 elasticsearch_username: str = None,
-                 elasticsearch_password: str = None):
-        
-        self.service_name = service_name or os.getenv('SERVICE_NAME', 'python-app')
-        self.environment = environment or os.getenv('NODE_ENV', 'development')
-        self.version = version or os.getenv('APP_VERSION', '1.0.0')
+    def __init__(self, service_name='gwan-app', environment='production'):
+        self.service_name = service_name
+        self.environment = environment
         self.hostname = socket.gethostname()
+        self.pid = os.getpid()
         
-        # Configurações do Elasticsearch
-        self.elasticsearch_url = elasticsearch_url or os.getenv('ELASTICSEARCH_URL', 'http://elasticsearch:9200')
-        self.elasticsearch_username = elasticsearch_username or os.getenv('ELASTICSEARCH_USERNAME', 'elastic')
-        self.elasticsearch_password = elasticsearch_password or os.getenv('ELASTICSEARCH_PASSWORD', 'GwanLogs2024!')
+        # Configurar Elasticsearch
+        self.es_client = Elasticsearch(
+            [os.getenv('ELASTICSEARCH_URL', 'http://elasticsearch:9200')],
+            basic_auth=(
+                os.getenv('ELASTIC_USERNAME', 'elastic'),
+                os.getenv('ELASTIC_PASSWORD', 'GwanLogs2024!')
+            ),
+            verify_certs=False
+        )
         
         # Configurar logger
-        self.logger = self._setup_logger()
+        self.logger = logging.getLogger(service_name)
+        self.logger.setLevel(logging.INFO)
         
-        # Cliente Elasticsearch para logs diretos
-        self.es_client = self._setup_elasticsearch_client()
-    
-    def _setup_logger(self) -> logging.Logger:
-        """Configurar o logger principal"""
-        logger = logging.getLogger(self.service_name)
-        logger.setLevel(logging.INFO)
-        
-        # Limpar handlers existentes
-        logger.handlers.clear()
-        
-        # Handler para console
-        console_handler = logging.StreamHandler(sys.stdout)
-        console_handler.setLevel(logging.INFO)
-        
-        # Formatter JSON para console
-        json_formatter = jsonlogger.JsonFormatter(
-            fmt='%(timestamp)s %(level)s %(name)s %(message)s',
+        # Formato personalizado
+        self.formatter = jsonlogger.JsonFormatter(
+            fmt='%(timestamp)s %(level)s %(message)s %(service)s %(environment)s %(hostname)s %(pid)s',
             datefmt='%Y-%m-%d %H:%M:%S'
         )
-        console_handler.setFormatter(json_formatter)
-        logger.addHandler(console_handler)
         
-        # Handler para arquivo (opcional)
-        if os.getenv('LOG_TO_FILE', 'false').lower() == 'true':
-            file_handler = logging.FileHandler(f'/var/log/{self.service_name}.log')
-            file_handler.setLevel(logging.INFO)
-            file_handler.setFormatter(json_formatter)
-            logger.addHandler(file_handler)
+        # Handler para console
+        console_handler = logging.StreamHandler()
+        console_handler.setFormatter(self.formatter)
+        self.logger.addHandler(console_handler)
         
-        return logger
+        # Handler para Elasticsearch
+        self.es_handler = ElasticsearchHandler(
+            self.es_client,
+            index_prefix='gwan-logs',
+            service_name=service_name,
+            environment=environment
+        )
+        self.logger.addHandler(self.es_handler)
     
-    def _setup_elasticsearch_client(self) -> Optional[Elasticsearch]:
-        """Configurar cliente Elasticsearch"""
-        if self.environment == 'production':
-            try:
-                es_client = Elasticsearch(
-                    [self.elasticsearch_url],
-                    basic_auth=(self.elasticsearch_username, self.elasticsearch_password),
-                    verify_certs=False,
-                    ssl_show_warn=False
-                )
-                
-                # Testar conexão
-                if es_client.ping():
-                    return es_client
-                else:
-                    self.logger.warning("Elasticsearch não está respondendo")
-                    return None
-                    
-            except Exception as e:
-                self.logger.warning(f"Erro ao conectar com Elasticsearch: {e}")
-                return None
-        
-        return None
-    
-    def _format_log(self, level: str, message: str, **kwargs) -> Dict[str, Any]:
-        """Formatar log para Elasticsearch"""
+    def _format_log(self, level, message, **kwargs):
+        """Formata log com metadados estruturados"""
         log_data = {
-            '@timestamp': datetime.utcnow().isoformat() + 'Z',
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            '@timestamp': datetime.utcnow().isoformat(),
             'level': level.upper(),
             'message': message,
             'service': self.service_name,
             'environment': self.environment,
-            'version': self.version,
             'hostname': self.hostname,
-            'meta': kwargs
+            'pid': self.pid,
+            'version': os.getenv('APP_VERSION', '1.0.0'),
+            **kwargs
         }
-        
-        # Adicionar campos extras
-        for key, value in kwargs.items():
-            if key not in ['@timestamp', 'timestamp', 'level', 'message', 'service', 'environment', 'version', 'hostname']:
-                log_data[key] = value
-        
         return log_data
     
-    def _send_to_elasticsearch(self, log_data: Dict[str, Any]) -> bool:
-        """Enviar log para Elasticsearch"""
-        if not self.es_client:
-            return False
+    def info(self, message, **kwargs):
+        """Log de informação"""
+        log_data = self._format_log('info', message, **kwargs)
+        self.logger.info(json.dumps(log_data))
+    
+    def error(self, message, error=None, **kwargs):
+        """Log de erro"""
+        log_data = self._format_log('error', message, **kwargs)
+        if error:
+            log_data['error'] = {
+                'message': str(error),
+                'type': type(error).__name__,
+                'traceback': getattr(error, '__traceback__', None)
+            }
+        self.logger.error(json.dumps(log_data))
+    
+    def warn(self, message, **kwargs):
+        """Log de aviso"""
+        log_data = self._format_log('warn', message, **kwargs)
+        self.logger.warning(json.dumps(log_data))
+    
+    def debug(self, message, **kwargs):
+        """Log de debug"""
+        log_data = self._format_log('debug', message, **kwargs)
+        self.logger.debug(json.dumps(log_data))
+    
+    def performance(self, operation, duration_ms, **kwargs):
+        """Log de performance"""
+        log_data = self._format_log('info', f'Performance: {operation}', 
+                                  operation=operation, 
+                                  duration_ms=duration_ms,
+                                  log_type='performance',
+                                  **kwargs)
+        self.logger.info(json.dumps(log_data))
+    
+    def security(self, event, details=None, **kwargs):
+        """Log de segurança"""
+        log_data = self._format_log('warn', f'Security: {event}',
+                                  event=event,
+                                  details=details or {},
+                                  log_type='security',
+                                  **kwargs)
+        self.logger.warning(json.dumps(log_data))
+    
+    def audit(self, action, resource, user_id, **kwargs):
+        """Log de auditoria"""
+        log_data = self._format_log('info', f'Audit: {action} on {resource}',
+                                  action=action,
+                                  resource=resource,
+                                  user_id=user_id,
+                                  log_type='audit',
+                                  **kwargs)
+        self.logger.info(json.dumps(log_data))
+
+
+class ElasticsearchHandler(logging.Handler):
+    """Handler personalizado para Elasticsearch"""
+    
+    def __init__(self, es_client, index_prefix='gwan-logs', service_name='gwan-app', environment='production'):
+        super().__init__()
+        self.es_client = es_client
+        self.index_prefix = index_prefix
+        self.service_name = service_name
+        self.environment = environment
+        
+        # Criar template de índice
+        self._create_index_template()
+    
+    def _create_index_template(self):
+        """Cria template de índice no Elasticsearch"""
+        template_name = f"{self.index_prefix}-template"
+        template_body = {
+            "index_patterns": [f"{self.index_prefix}-*"],
+            "settings": {
+                "number_of_shards": 1,
+                "number_of_replicas": 0,
+                "index.lifecycle.name": "logs",
+                "index.lifecycle.rollover_alias": self.index_prefix
+            },
+            "mappings": {
+                "properties": {
+                    "@timestamp": {"type": "date"},
+                    "level": {"type": "keyword"},
+                    "message": {"type": "text"},
+                    "service": {"type": "keyword"},
+                    "environment": {"type": "keyword"},
+                    "hostname": {"type": "keyword"},
+                    "pid": {"type": "integer"},
+                    "version": {"type": "keyword"},
+                    "log_type": {"type": "keyword"},
+                    "error": {
+                        "properties": {
+                            "message": {"type": "text"},
+                            "type": {"type": "keyword"},
+                            "traceback": {"type": "text"}
+                        }
+                    }
+                }
+            }
+        }
         
         try:
-            index_name = f"gwan-logs-python-{datetime.utcnow().strftime('%Y.%m.%d')}"
+            self.es_client.indices.put_template(name=template_name, body=template_body)
+        except Exception as e:
+            print(f"Erro ao criar template: {e}")
+    
+    def emit(self, record):
+        """Envia log para Elasticsearch"""
+        try:
+            # Formatar log
+            log_data = json.loads(record.getMessage())
             
+            # Criar nome do índice com data
+            index_name = f"{self.index_prefix}-{datetime.now().strftime('%Y.%m.%d')}"
+            
+            # Enviar para Elasticsearch
             self.es_client.index(
                 index=index_name,
                 body=log_data,
-                id=str(uuid.uuid4())
+                id=None  # Deixar Elasticsearch gerar ID
             )
-            return True
-            
         except Exception as e:
-            self.logger.warning(f"Erro ao enviar log para Elasticsearch: {e}")
-            return False
-    
-    def info(self, message: str, **kwargs):
-        """Log de informação"""
-        log_data = self._format_log('info', message, **kwargs)
-        self.logger.info(message, extra=log_data)
-        self._send_to_elasticsearch(log_data)
-    
-    def warning(self, message: str, **kwargs):
-        """Log de aviso"""
-        log_data = self._format_log('warning', message, **kwargs)
-        self.logger.warning(message, extra=log_data)
-        self._send_to_elasticsearch(log_data)
-    
-    def error(self, message: str, **kwargs):
-        """Log de erro"""
-        log_data = self._format_log('error', message, **kwargs)
-        self.logger.error(message, extra=log_data)
-        self._send_to_elasticsearch(log_data)
-    
-    def debug(self, message: str, **kwargs):
-        """Log de debug"""
-        log_data = self._format_log('debug', message, **kwargs)
-        self.logger.debug(message, extra=log_data)
-        # Debug logs não são enviados para Elasticsearch em produção
-    
-    def critical(self, message: str, **kwargs):
-        """Log crítico"""
-        log_data = self._format_log('critical', message, **kwargs)
-        self.logger.critical(message, extra=log_data)
-        self._send_to_elasticsearch(log_data)
-    
-    def performance(self, operation: str, duration: float, **kwargs):
-        """Log de performance"""
-        self.info(
-            f"Performance metric: {operation}",
-            operation=operation,
-            duration_ms=duration,
-            **kwargs
-        )
-    
-    def business_event(self, event: str, data: Dict[str, Any], **kwargs):
-        """Log de evento de negócio"""
-        self.info(
-            f"Business event: {event}",
-            event=event,
-            data=data,
-            **kwargs
-        )
-    
-    def security_event(self, event: str, details: Dict[str, Any], **kwargs):
-        """Log de evento de segurança"""
-        self.warning(
-            f"Security event: {event}",
-            event=event,
-            details=details,
-            **kwargs
-        )
-    
-    def audit_log(self, action: str, resource: str, user_id: str, **kwargs):
-        """Log de auditoria"""
-        self.info(
-            f"Audit log: {action} on {resource}",
-            action=action,
-            resource=resource,
-            user_id=user_id,
-            **kwargs
-        )
-
-
-class FlaskLoggerMiddleware:
-    """Middleware para Flask"""
-    
-    def __init__(self, app, logger: GwanLogger):
-        self.app = app
-        self.logger = logger
-    
-    def __call__(self, environ, start_response):
-        # Log da requisição
-        request_id = environ.get('HTTP_X_REQUEST_ID', str(uuid.uuid4()))
-        
-        self.logger.info(
-            "Request received",
-            method=environ.get('REQUEST_METHOD'),
-            url=environ.get('PATH_INFO'),
-            ip=environ.get('REMOTE_ADDR'),
-            user_agent=environ.get('HTTP_USER_AGENT'),
-            request_id=request_id
-        )
-        
-        # Interceptar resposta
-        def custom_start_response(status, headers, exc_info=None):
-            # Log da resposta
-            self.logger.info(
-                "Request completed",
-                method=environ.get('REQUEST_METHOD'),
-                url=environ.get('PATH_INFO'),
-                status_code=status.split()[0],
-                request_id=request_id
-            )
-            return start_response(status, headers, exc_info)
-        
-        return self.app(environ, custom_start_response)
-
-
-class DjangoLoggerMiddleware:
-    """Middleware para Django"""
-    
-    def __init__(self, logger: GwanLogger):
-        self.logger = logger
-    
-    def __call__(self, request):
-        # Log da requisição
-        request_id = request.headers.get('X-Request-ID', str(uuid.uuid4()))
-        
-        self.logger.info(
-            "Request received",
-            method=request.method,
-            url=request.path,
-            ip=request.META.get('REMOTE_ADDR'),
-            user_agent=request.META.get('HTTP_USER_AGENT'),
-            request_id=request_id
-        )
-        
-        # Processar requisição
-        response = self.get_response(request)
-        
-        # Log da resposta
-        self.logger.info(
-            "Request completed",
-            method=request.method,
-            url=request.path,
-            status_code=response.status_code,
-            request_id=request_id
-        )
-        
-        return response
+            print(f"Erro ao enviar log para Elasticsearch: {e}")
 
 
 # Exemplo de uso
 if __name__ == "__main__":
     # Criar logger
-    logger = GwanLogger(
-        service_name="test-python-app",
-        environment="development"
-    )
+    logger = GwanLogger(service_name='test-app', environment='development')
     
-    # Testes
-    logger.info("Logger inicializado com sucesso", test=True)
+    # Exemplos de logs
+    logger.info("Aplicação iniciada", port=3000, host="localhost")
     
-    logger.error(
-        "Erro de teste",
-        error_code="TEST_ERROR",
-        error_message="Este é um erro de teste"
-    )
+    try:
+        # Simular erro
+        raise ValueError("Erro de teste")
+    except Exception as e:
+        logger.error("Erro na aplicação", error=e, context="main")
     
-    logger.warning(
-        "Aviso de teste",
-        warning_type="test_warning"
-    )
+    logger.warn("Aviso importante", user_count=150)
     
-    logger.performance(
-        "database_query",
-        150.5,
-        query="SELECT * FROM users",
-        table="users"
-    )
+    logger.performance("database_query", 150, table="users", query="SELECT *")
     
-    logger.business_event(
-        "user_registration",
-        {
-            "user_id": "12345",
-            "email": "user@example.com"
-        },
-        source="web_form"
-    )
+    logger.security("failed_login", {
+        "ip": "192.168.1.1",
+        "username": "testuser",
+        "attempts": 3
+    })
     
-    logger.security_event(
-        "failed_login",
-        {
-            "ip": "192.168.1.1",
-            "username": "testuser",
-            "attempts": 3
-        },
-        source="auth_service"
-    )
-    
-    logger.audit_log(
-        "create",
-        "user",
-        "admin",
-        target_user_id="12345",
-        changes=["email", "status"]
-    )
-    
-    print("Testes concluídos!")
+    logger.audit("create", "user", "admin", target_user="12345")
