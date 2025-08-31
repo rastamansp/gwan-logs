@@ -8,22 +8,22 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=true
-      - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
+      - ELASTIC_PASSWORD=GwanLogs2024!
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - ingest.geoip.downloader.enabled=false
       - cluster.routing.allocation.disk.threshold_enabled=false
       - bootstrap.memory_lock=false
     volumes:
-      - es_data_external:/usr/share/elasticsearch/data
+      - es_data:/usr/share/elasticsearch/data
     networks:
       - gwan
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
-      interval: 180s
-      timeout: 90s
-      retries: 3
-      start_period: 600s
+      interval: 300s
+      timeout: 120s
+      retries: 2
+      start_period: 900s
 
   # Kibana - Interface de visualização
   kibana:
@@ -32,11 +32,11 @@ services:
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - ELASTICSEARCH_USERNAME=elastic
-      - ELASTICSEARCH_PASSWORD=${ELASTIC_PASSWORD}
+      - ELASTICSEARCH_PASSWORD=GwanLogs2024!
       - SERVER_NAME=gwan-kibana
       - SERVER_HOST=0.0.0.0
     volumes:
-      - kb_data_external:/usr/share/kibana/data
+      - kb_data:/usr/share/kibana/data
     networks:
       - gwan
     depends_on:
@@ -45,10 +45,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
-      interval: 180s
-      timeout: 90s
-      retries: 5
-      start_period: 900s
+      interval: 300s
+      timeout: 120s
+      retries: 3
+      start_period: 1200s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.kibana.rule=Host(`logs.gwan.com.br`)"
@@ -57,10 +57,8 @@ services:
       - "traefik.http.services.kibana.loadbalancer.server.port=5601"
 
 volumes:
-  es_data_external:
-    external: true
-  kb_data_external:
-    external: true
+  es_data:
+  kb_data:
 
 networks:
   gwan:
