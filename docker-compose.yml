@@ -9,7 +9,7 @@ services:
       - discovery.type=single-node
       - xpack.security.enabled=true
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
-      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
+      - "ES_JAVA_OPTS=-Xms1g -Xmx1g"
       - ingest.geoip.downloader.enabled=false
       - cluster.routing.allocation.disk.threshold_enabled=false
       - bootstrap.memory_lock=false
@@ -20,10 +20,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
-      interval: 120s
-      timeout: 60s
-      retries: 5
-      start_period: 300s
+      interval: 180s
+      timeout: 90s
+      retries: 3
+      start_period: 600s
 
   # Kibana - Interface de visualização
   kibana:
@@ -45,10 +45,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
-      interval: 120s
-      timeout: 60s
-      retries: 10
-      start_period: 600s
+      interval: 180s
+      timeout: 90s
+      retries: 5
+      start_period: 900s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.kibana.rule=Host(`logs.gwan.com.br`)"
