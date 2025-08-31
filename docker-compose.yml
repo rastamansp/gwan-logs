@@ -11,10 +11,16 @@ services:
       - ELASTIC_PASSWORD=${ELASTIC_PASSWORD}
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
     volumes:
-      - es_data:/usr/share/elasticsearch/data
+      - es_data_v7:/usr/share/elasticsearch/data
     networks:
       - gwan
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 10
+      start_period: 180s
 
   # Kibana - Interface de visualização
   kibana:
@@ -27,12 +33,19 @@ services:
       - SERVER_NAME=gwan-kibana
       - SERVER_HOST=0.0.0.0
     volumes:
-      - kb_data:/usr/share/kibana/data
+      - kb_data_v7:/usr/share/kibana/data
     networks:
       - gwan
     depends_on:
-      - elasticsearch
+      elasticsearch:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 15
+      start_period: 300s
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.kibana.rule=Host(`logs.gwan.com.br`)"
@@ -41,8 +54,8 @@ services:
       - "traefik.http.services.kibana.loadbalancer.server.port=5601"
 
 volumes:
-  es_data:
-  kb_data:
+  es_data_v7:
+  kb_data_v7:
 
 networks:
   gwan:
