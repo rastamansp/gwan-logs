@@ -12,7 +12,7 @@ services:
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
       - ingest.geoip.downloader.enabled=false
     volumes:
-      - es_data_v7:/usr/share/elasticsearch/data
+      - es_data_external:/usr/share/elasticsearch/data
     networks:
       - gwan
     restart: unless-stopped
@@ -34,7 +34,7 @@ services:
       - SERVER_NAME=gwan-kibana
       - SERVER_HOST=0.0.0.0
     volumes:
-      - kb_data_v7:/usr/share/kibana/data
+      - kb_data_external:/usr/share/kibana/data
     networks:
       - gwan
     depends_on:
@@ -55,8 +55,10 @@ services:
       - "traefik.http.services.kibana.loadbalancer.server.port=5601"
 
 volumes:
-  es_data_v7:
-  kb_data_v7:
+  es_data_external:
+    external: true
+  kb_data_external:
+    external: true
 
 networks:
   gwan:
