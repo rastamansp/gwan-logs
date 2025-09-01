@@ -1,8 +1,51 @@
 // Exemplo de configuração de logger para Node.js
-// Integração com Elasticsearch para Gwan Logs
+// Integração com Elasticsearch para Gwan Logs + OpenTelemetry
 
 const winston = require('winston');
 const { ElasticsearchTransport } = require('winston-elasticsearch');
+const { NodeSDK } = require('@opentelemetry/sdk-node');
+const { getNodeAutoInstrumentations } = require('@opentelemetry/auto-instrumentations-node');
+const { OTLPTraceExporter } = require('@opentelemetry/exporter-trace-otlp-http');
+const { OTLPMetricExporter } = require('@opentelemetry/exporter-metrics-otlp-http');
+const { Resource } = require('@opentelemetry/resources');
+const { SemanticResourceAttributes } = require('@opentelemetry/semantic-conventions');
+const { PeriodicExportingMetricReader } = require('@opentelemetry/sdk-metrics');
+const { trace, metrics } = require('@opentelemetry/api');
+
+// Configuração do OpenTelemetry
+const sdk = new NodeSDK({
+  resource: new Resource({
+    [SemanticResourceAttributes.SERVICE_NAME]: 'gwan-app',
+    [SemanticResourceAttributes.SERVICE_VERSION]: process.env.APP_VERSION || '1.0.0',
+    environment: process.env.NODE_ENV || 'production',
+  }),
+  traceExporter: new OTLPTraceExporter({
+    url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/traces',
+  }),
+  metricReader: new PeriodicExportingMetricReader({
+    exporter: new OTLPMetricExporter({
+      url: process.env.OTEL_EXPORTER_OTLP_ENDPOINT || 'http://localhost:4318/v1/metrics',
+    }),
+    exportIntervalMillis: 1000,
+  }),
+  instrumentations: [getNodeAutoInstrumentations()],
+});
+
+// Inicializa o SDK
+sdk.start();
+
+// Métricas OpenTelemetry
+const meter = metrics.getMeter('gwan-app');
+const requestCounter = meter.createCounter('requests_total', {
+  description: 'Total de requisições',
+});
+const requestDuration = meter.createHistogram('request_duration', {
+  description: 'Duração das requisições',
+  unit: 'ms',
+});
+const errorCounter = meter.createCounter('errors_total', {
+  description: 'Total de erros',
+});
 
 // Formato personalizado para logs
 const customFormat = winston.format.combine(
@@ -89,12 +132,47 @@ const logger = winston.createLogger({
   ]
 });
 
-// Middleware para Express
+// Middleware para Express com OpenTelemetry
 const loggerMiddleware = (req, res, next) => {
   const start = Date.now();
+  const tracer = trace.getTracer('gwan-app');
+  
+  // Cria span para a requisição
+  const span = tracer.startSpan('http-request', {
+    attributes: {
+      'http.method': req.method,
+      'http.url': req.url,
+      'http.user_agent': req.get('User-Agent'),
+      'http.remote_ip': req.ip,
+    }
+  });
+  
+  // Adiciona span ao contexto
+  const ctx = trace.setSpan(trace.active(), span);
   
   res.on('finish', () => {
     const duration = Date.now() - start;
+    
+    // Atualiza span com informações da resposta
+    span.setAttributes({
+      'http.status_code': res.statusCode,
+      'http.response_size': res.get('Content-Length'),
+    });
+    
+    // Incrementa métricas
+    requestCounter.add(1, {
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+    });
+    
+    requestDuration.record(duration, {
+      method: req.method,
+      path: req.path,
+      status: res.statusCode,
+    });
+    
+    // Log estruturado
     logger.info('HTTP Request', {
       method: req.method,
       url: req.url,
@@ -102,45 +180,106 @@ const loggerMiddleware = (req, res, next) => {
       duration: `${duration}ms`,
       userAgent: req.get('User-Agent'),
       ip: req.ip,
-      userId: req.user?.id || 'anonymous'
+      userId: req.user?.id || 'anonymous',
+      traceId: span.spanContext().traceId,
+      spanId: span.spanContext().spanId,
     });
+    
+    // Finaliza span
+    span.end();
   });
   
   next();
 };
 
-// Funções de log personalizadas
+// Funções de log personalizadas com OpenTelemetry
 const logError = (error, context = {}) => {
+  const tracer = trace.getTracer('gwan-app');
+  const span = tracer.startSpan('error-handler');
+  
+  // Incrementa contador de erros
+  errorCounter.add(1, {
+    error_type: error.constructor.name,
+    service: 'gwan-app',
+  });
+  
+  // Registra erro no span
+  span.recordException(error);
+  span.setStatus({ code: 2, message: error.message });
+  
   logger.error('Application Error', {
     error: {
       message: error.message,
       stack: error.stack,
       code: error.code
     },
-    context
+    context,
+    traceId: span.spanContext().traceId,
+    spanId: span.spanContext().spanId,
   });
+  
+  span.end();
 };
 
 const logPerformance = (operation, duration, metadata = {}) => {
+  const tracer = trace.getTracer('gwan-app');
+  const span = tracer.startSpan('performance-metric');
+  
+  span.setAttributes({
+    'operation.name': operation,
+    'operation.duration': duration,
+    ...metadata
+  });
+  
   logger.info('Performance Metric', {
     operation,
     duration: `${duration}ms`,
-    ...metadata
+    ...metadata,
+    traceId: span.spanContext().traceId,
+    spanId: span.spanContext().spanId,
   });
+  
+  span.end();
 };
 
 const logSecurity = (event, details = {}) => {
+  const tracer = trace.getTracer('gwan-app');
+  const span = tracer.startSpan('security-event');
+  
+  span.setAttributes({
+    'security.event': event,
+    ...details
+  });
+  
   logger.warn('Security Event', {
     event,
     details,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    traceId: span.spanContext().traceId,
+    spanId: span.spanContext().spanId,
   });
+  
+  span.end();
 };
+
+// Graceful shutdown
+process.on('SIGTERM', () => {
+  sdk.shutdown()
+    .then(() => {
+      logger.info('OpenTelemetry SDK desligado com sucesso');
+      process.exit(0);
+    })
+    .catch((error) => {
+      logger.error('Erro ao desligar OpenTelemetry SDK:', error);
+      process.exit(1);
+    });
+});
 
 module.exports = {
   logger,
   loggerMiddleware,
   logError,
   logPerformance,
-  logSecurity
+  logSecurity,
+  sdk
 };

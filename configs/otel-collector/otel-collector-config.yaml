@@ -1,0 +1,104 @@
+receivers:
+  # OTLP receiver para receber telemetria
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+  # Jaeger receiver para traces
+  jaeger:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:14250
+      thrift_http:
+        endpoint: 0.0.0.0:14268
+      thrift_binary:
+        endpoint: 0.0.0.0:6832
+      thrift_compact:
+        endpoint: 0.0.0.0:6831
+
+  # Prometheus receiver para métricas
+  prometheus:
+    config:
+      scrape_configs:
+        - job_name: 'otel-collector'
+          scrape_interval: 10s
+          static_configs:
+            - targets: ['localhost:8888']
+
+processors:
+  # Processamento de traces
+  batch:
+    timeout: 1s
+    send_batch_size: 1024
+
+  # Filtros para dados sensíveis
+  attributes:
+    actions:
+      - key: password
+        action: delete
+      - key: token
+        action: delete
+      - key: secret
+        action: delete
+
+  # Adiciona recursos aos dados
+  resource:
+    attributes:
+      - key: environment
+        value: "production"
+        action: upsert
+      - key: service.name
+        value: "gwan-logs"
+        action: upsert
+
+exporters:
+  # Exporta logs para Elasticsearch
+  logging:
+    loglevel: info
+
+  # Exporta traces para Jaeger
+  jaeger:
+    endpoint: jaeger:14250
+    tls:
+      insecure: true
+
+  # Exporta métricas para Prometheus
+  prometheus:
+    endpoint: 0.0.0.0:8888
+
+  # Exporta logs para Logstash
+  logstash:
+    endpoint: logstash:5044
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    # Pipeline para traces
+    traces:
+      receivers: [otlp, jaeger]
+      processors: [batch, attributes, resource]
+      exporters: [jaeger, logging]
+
+    # Pipeline para métricas
+    metrics:
+      receivers: [otlp, prometheus]
+      processors: [batch, resource]
+      exporters: [prometheus, logging]
+
+    # Pipeline para logs
+    logs:
+      receivers: [otlp]
+      processors: [batch, attributes, resource]
+      exporters: [logstash, logging]
+
+  extensions:
+    health_check:
+      endpoint: 0.0.0.0:13133
+    pprof:
+      endpoint: 0.0.0.0:1777
+    zpages:
+      endpoint: 0.0.0.0:55679
