@@ -7,13 +7,18 @@ Sistema de observabilidade completa para aplicações Node.js e Python rodando n
 ```mermaid
 graph TB
     A[Aplicações<br/>Node.js/Python] --> B[OpenTelemetry<br/>Collector]
-    B --> C[Logstash<br/>Processamento]
+    A --> C[Logstash<br/>Processamento]
     B --> D[Prometheus<br/>Métricas]
     B --> E[Jaeger<br/>Traces]
     C --> F[Elasticsearch<br/>Armazenamento]
     D --> G[Kibana<br/>Visualização]
     E --> G
     F --> G
+    
+    T[Traefik<br/>Reverse Proxy] --> G
+    T --> H[Prometheus<br/>Interface]
+    T --> I[Alertmanager<br/>Interface]
+    T --> J[Jaeger<br/>Interface]
     
     style A fill:#e1f5fe
     style B fill:#fff3e0
@@ -22,6 +27,10 @@ graph TB
     style E fill:#fff8e1
     style F fill:#fce4ec
     style G fill:#e0f2f1
+    style T fill:#ffebee
+    style H fill:#e8f5e8
+    style I fill:#fff3e0
+    style J fill:#fff8e1
 ```
 
 ## 🔍 Observabilidade Completa
@@ -115,26 +124,30 @@ sequenceDiagram
 ```mermaid
 graph TB
     subgraph "Rede Externa"
-        T[Traefik<br/>Load Balancer]
+        T[Traefik<br/>Load Balancer<br/>Porta 80/443]
     end
     
     subgraph "Rede Docker 'gwan'"
         subgraph "Stack Gwan APM"
-            ES[Elasticsearch<br/>9200]
+            ES[Elasticsearch<br/>9200 - Interno]
             K[Kibana<br/>5601]
-            LS[Logstash<br/>5044/9600]
-            OTEL[OpenTelemetry<br/>4318/8888]
+            LS[Logstash<br/>5044/5000/5001]
+            OTEL[OpenTelemetry<br/>4317/4318]
             J[Jaeger<br/>16686]
             P[Prometheus<br/>9090]
+            A[Alertmanager<br/>9093]
         end
     end
     
-    T --> ES
     T --> K
-    T --> LS
-    T --> OTEL
     T --> J
     T --> P
+    T --> A
+    
+    LS -.->|Logs| ES
+    OTEL -.->|Telemetria| LS
+    OTEL -.->|Métricas| P
+    OTEL -.->|Traces| J
     
     style T fill:#ffebee
     style ES fill:#fce4ec
@@ -143,7 +156,48 @@ graph TB
     style OTEL fill:#fff3e0
     style J fill:#fff8e1
     style P fill:#e8f5e8
+    style A fill:#fff3e0
 ```
+
+## 🌐 Traefik - Reverse Proxy e Load Balancer
+
+O sistema utiliza o **Traefik** como reverse proxy para gerenciar o acesso aos serviços através de URLs amigáveis e DNS personalizados.
+
+### 🎯 **Serviços Acessíveis via HTTP (Traefik)**
+
+| Serviço | URL | Descrição |
+|---------|-----|-----------|
+| **Traefik Dashboard** | `http://traefik.gwan.com.br` | Dashboard do Traefik |
+| **Kibana** | `http://kibana.gwan.com.br` | Interface de visualização de logs |
+| **Jaeger** | `http://jaeger.gwan.com.br` | Interface de traces |
+| **Prometheus** | `http://prometheus.gwan.com.br` | Interface de métricas |
+| **Alertmanager** | `http://alertmanager.gwan.com.br` | Interface de alertas |
+
+### 🔌 **Serviços para Conexão de Aplicações**
+
+| Serviço | Porta | Protocolo | Descrição |
+|---------|-------|-----------|-----------|
+| **Logstash** | 5044 | TCP | Filebeat/Logs (Beats) |
+| **Logstash** | 5000 | TCP | Logs TCP |
+| **Logstash** | 5001 | UDP | Logs UDP |
+| **OTEL Collector** | 4317 | gRPC | Telemetria gRPC |
+| **OTEL Collector** | 4318 | HTTP | Telemetria HTTP |
+
+### 🔒 **Serviços Internos (Rede Docker)**
+
+| Serviço | Porta | Descrição |
+|---------|-------|-----------|
+| **Elasticsearch** | 9200 | Armazenamento interno |
+| **Logstash** | 9600 | API interna |
+| **OTEL Collector** | 8888 | Métricas internas |
+
+### ✅ **Vantagens do Traefik**
+
+1. **Segurança**: Serviços internos não expostos publicamente
+2. **Performance**: Load balancing e SSL automático
+3. **Simplicidade**: URLs amigáveis para acesso
+4. **Flexibilidade**: Portas específicas para cada tipo de conexão
+5. **Monitoramento**: Dashboard para acompanhar tráfego
 
 ## 📋 Pré-requisitos
 
@@ -175,13 +229,11 @@ cp .env.example .env
 5. Clique em "Deploy the stack"
 
 ### 4. Acesse as interfaces
-- **📊 Kibana**: `https://kibana.gwan.com.br` (Logs e Visualização)
-- **🔍 Jaeger**: `https://jaeger.gwan.com.br` (Traces e Spans)
-- **📊 Prometheus**: `https://prometheus.gwan.com.br` (Métricas)
-- **🚨 Alertmanager**: `https://alertmanager.gwan.com.br` (Alertas Críticos)
-- **🔧 OpenTelemetry Collector**: `https://otel.gwan.com.br` (Status)
-- **📝 Logstash**: `https://logstash.gwan.com.br` (Status)
-- **🗄️ Elasticsearch**: `https://elasticsearch.gwan.com.br` (API REST)
+- **📊 Kibana**: `http://kibana.gwan.com.br` (Logs e Visualização)
+- **🔍 Jaeger**: `http://jaeger.gwan.com.br` (Traces e Spans)
+- **📊 Prometheus**: `http://prometheus.gwan.com.br` (Métricas)
+- **🚨 Alertmanager**: `http://alertmanager.gwan.com.br` (Alertas Críticos)
+- **🔧 Traefik Dashboard**: `http://traefik.gwan.com.br` (Status do Proxy)
 
 ## 📊 Monitoramento e Alertas
 
@@ -226,11 +278,11 @@ const sdk = new NodeSDK({
     environment: 'production',
   }),
   traceExporter: new OTLPTraceExporter({
-    url: 'http://localhost:4318/v1/traces',
+    url: 'http://gwan.com.br:4318/v1/traces',
   }),
   metricReader: new PeriodicExportingMetricReader({
     exporter: new OTLPMetricExporter({
-      url: 'http://localhost:4318/v1/metrics',
+      url: 'http://gwan.com.br:4318/v1/metrics',
     }),
     exportIntervalMillis: 1000,
   }),
@@ -258,7 +310,7 @@ const logger = winston.createLogger({
     new ElasticsearchTransport({
       level: 'info',
       clientOpts: {
-        node: 'http://elasticsearch:9200',
+        node: 'http://gwan.com.br:9200',
         index: 'gwan-logs'
       }
     })
@@ -323,12 +375,66 @@ resource = Resource.create({"service.name": "minha-app", "service.version": "1.0
 trace.set_tracer_provider(TracerProvider(resource=resource))
 
 # Configurar o exportador
-otlp_exporter = OTLPSpanExporter(endpoint="http://localhost:4318/v1/traces")
+otlp_exporter = OTLPSpanExporter(endpoint="http://gwan.com.br:4318/v1/traces")
 span_processor = BatchSpanProcessor(otlp_exporter)
 trace.get_tracer_provider().add_span_processor(span_processor)
 
 # Instrumentar Flask
 FlaskInstrumentor().instrument()
+```
+
+### Para envio de logs via Filebeat
+
+#### 1. Configurar Filebeat
+```yaml
+# filebeat.yml
+filebeat.inputs:
+- type: log
+  enabled: true
+  paths:
+    - /var/log/application/*.log
+  json.keys_under_root: true
+  json.add_error_key: true
+
+output.logstash:
+  hosts: ["gwan.com.br:5044"]
+
+processors:
+  - add_host_metadata: ~
+  - add_cloud_metadata: ~
+```
+
+#### 2. Enviar logs via TCP/UDP
+```javascript
+// Node.js - Enviar logs via TCP
+const net = require('net');
+
+const client = new net.Socket();
+client.connect(5000, 'gwan.com.br', () => {
+  console.log('Conectado ao Logstash');
+});
+
+client.write(JSON.stringify({
+  level: 'info',
+  message: 'Log via TCP',
+  timestamp: new Date().toISOString(),
+  service: 'minha-app'
+}));
+```
+
+```python
+# Python - Enviar logs via UDP
+import socket
+import json
+
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+log_data = {
+    'level': 'info',
+    'message': 'Log via UDP',
+    'timestamp': '2024-01-01T00:00:00Z',
+    'service': 'minha-app'
+}
+sock.sendto(json.dumps(log_data).encode(), ('gwan.com.br', 5001))
 ```
 
 ## 📊 Visualização de Dados
