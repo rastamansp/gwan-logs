@@ -124,7 +124,7 @@ sequenceDiagram
 ```mermaid
 graph TB
     subgraph "Rede Externa"
-        T[Traefik<br/>Load Balancer<br/>Porta 9090/9443]
+        T[Traefik<br/>Load Balancer<br/>Porta 8081/8444]
     end
     
     subgraph "Rede Docker 'gwan'"
@@ -207,6 +207,31 @@ O sistema utiliza o **Traefik** como reverse proxy para gerenciar o acesso aos s
 - Aproximadamente 15GB de espaço em disco para logs e telemetria
 - Node.js 16+ para aplicações com OpenTelemetry
 
+## 🔌 **Portas em Uso no Servidor**
+
+### **Portas Ocupadas por Outros Serviços**
+| Serviço | Porta | Descrição |
+|---------|-------|-----------|
+| **Traefik Principal** | 80, 443 | Reverse proxy principal |
+| **gwan-site** | 8080 | Site principal |
+| **Portainer** | 8000, 9000 | Interface de gerenciamento Docker |
+| **gwan_bff_api** | 3000 | API Backend |
+| **postgres_prod** | 5432 | Banco PostgreSQL principal |
+| **pgvector** | 5433 | Banco PostgreSQL com extensão vector |
+| **gwan_python_api** | 8001 | API Python |
+| **mongodb** | 27017 | Banco MongoDB |
+| **gwan_rabbitmq** | 5672, 15672 | Message broker |
+| **chatwoot-redis** | 6379 | Cache Redis |
+| **n8n** | 5678 | Automação de workflows |
+
+### **Portas do Sistema Gwan APM**
+| Serviço | Porta | Descrição |
+|---------|-------|-----------|
+| **Traefik APM** | 8081, 8444 | Reverse proxy para APM |
+| **Traefik Dashboard** | 8082 | Dashboard do Traefik APM |
+| **Logstash** | 5044, 5000, 5001 | Coleta de logs |
+| **OTEL Collector** | 4317, 4318 | Telemetria |
+
 ## 🚀 Instalação
 
 ### 1. Clone o repositório
@@ -229,11 +254,11 @@ cp .env.example .env
 5. Clique em "Deploy the stack"
 
 ### 4. Acesse as interfaces
-- **📊 Kibana**: `http://kibana.gwan.com.br:9090` (Logs e Visualização)
-- **🔍 Jaeger**: `http://jaeger.gwan.com.br:9090` (Traces e Spans)
-- **📊 Prometheus**: `http://prometheus.gwan.com.br:9090` (Métricas)
-- **🚨 Alertmanager**: `http://alertmanager.gwan.com.br:9090` (Alertas Críticos)
-- **🔧 Traefik Dashboard**: `http://traefik.gwan.com.br:9090` (Status do Proxy)
+- **📊 Kibana**: `http://kibana.gwan.com.br:8081` (Logs e Visualização)
+- **🔍 Jaeger**: `http://jaeger.gwan.com.br:8081` (Traces e Spans)
+- **📊 Prometheus**: `http://prometheus.gwan.com.br:8081` (Métricas)
+- **🚨 Alertmanager**: `http://alertmanager.gwan.com.br:8081` (Alertas Críticos)
+- **🔧 Traefik Dashboard**: `http://traefik.gwan.com.br:8081` (Status do Proxy)
 
 ## 📊 Monitoramento e Alertas
 
