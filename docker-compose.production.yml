@@ -1,4 +1,36 @@
 services:
+  # Traefik - Reverse Proxy e Load Balancer
+  traefik:
+    image: traefik:v2.10
+    container_name: gwan-traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--log.level=INFO"
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Dashboard Traefik
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - gwan
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/ping || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.gwan.com.br`)"
+      - "traefik.http.routers.traefik-dashboard.entrypoints=web"
+      - "traefik.http.services.traefik-dashboard.loadbalancer.server.port=8080"
+
   # Elasticsearch - Armazenamento de logs
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.9.1
@@ -14,8 +46,6 @@ services:
       - bootstrap.memory_lock=false
     volumes:
       - es_data:/usr/share/elasticsearch/data
-    ports:
-      - "9200:9200"
     networks:
       - gwan
     restart: unless-stopped
@@ -41,8 +71,9 @@ services:
     volumes:
       - ls_data:/usr/share/logstash/data
     ports:
-      - "5044:5044"
-      - "9600:9600"
+      - "5044:5044"   # Beats input - Para aplicações
+      - "5000:5000"   # TCP input - Para aplicações
+      - "5001:5001"   # UDP input - Para aplicações
     networks:
       - gwan
     depends_on:
@@ -70,8 +101,6 @@ services:
       - SERVER_HOST=0.0.0.0
     volumes:
       - kb_data:/usr/share/kibana/data
-    ports:
-      - "5601:5601"
     networks:
       - gwan
     depends_on:
@@ -84,6 +113,11 @@ services:
       timeout: 120s
       retries: 3
       start_period: 1200s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.kibana.rule=Host(`kibana.gwan.com.br`)"
+      - "traefik.http.routers.kibana.entrypoints=web"
+      - "traefik.http.services.kibana.loadbalancer.server.port=5601"
     # Configurações de recursos para produção
     # Limite de memória: 1GB
     # Reserva de memória: 512MB
@@ -94,9 +128,8 @@ services:
     container_name: gwan-otel-collector
     command: ["--config=/etc/otel-collector-config.yaml"]
     ports:
-      - "4317:4317"   # OTLP gRPC
-      - "4318:4318"   # OTLP HTTP
-      - "8888:8888"   # Prometheus metrics
+      - "4317:4317"   # OTLP gRPC - Para aplicações
+      - "4318:4318"   # OTLP HTTP - Para aplicações
     networks:
       - gwan
     depends_on:
@@ -119,11 +152,6 @@ services:
     environment:
       - COLLECTOR_OTLP_ENABLED=true
       - COLLECTOR_OTLP_ENDPOINT=otel-collector:4317
-    ports:
-      - "16686:16686"  # UI
-      - "14268:14268"  # HTTP collector
-      - "14250:14250"  # gRPC collector
-      - "6831:6831/udp"  # UDP collector
     networks:
       - gwan
     depends_on:
@@ -135,6 +163,11 @@ services:
       timeout: 30s
       retries: 5
       start_period: 120s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.jaeger.rule=Host(`jaeger.gwan.com.br`)"
+      - "traefik.http.routers.jaeger.entrypoints=web"
+      - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
     # Configurações de recursos para produção
     # Limite de memória: 512MB
     # Reserva de memória: 256MB
@@ -152,8 +185,6 @@ services:
       - '--web.enable-lifecycle'
     volumes:
       - prometheus_data:/prometheus
-    ports:
-      - "9090:9090"
     networks:
       - gwan
     depends_on:
@@ -165,6 +196,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`prometheus.gwan.com.br`)"
+      - "traefik.http.routers.prometheus.entrypoints=web"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
     # Configurações de recursos para produção
     # Limite de memória: 512MB
     # Reserva de memória: 256MB
@@ -178,8 +214,6 @@ services:
       - '--storage.path=/alertmanager'
     volumes:
       - alertmanager_data:/alertmanager
-    ports:
-      - "9093:9093"
     networks:
       - gwan
     restart: unless-stopped
@@ -189,6 +223,11 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.alertmanager.rule=Host(`alertmanager.gwan.com.br`)"
+      - "traefik.http.routers.alertmanager.entrypoints=web"
+      - "traefik.http.services.alertmanager.loadbalancer.server.port=9093"
     # Configurações de recursos para produção
     # Limite de memória: 256MB
     # Reserva de memória: 128MB
