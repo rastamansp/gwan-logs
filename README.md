@@ -159,19 +159,18 @@ graph TB
     style A fill:#fff3e0
 ```
 
-## 🌐 Traefik - Reverse Proxy e Load Balancer
+## 🌐 **Configuração de Portas e Traefik**
 
-O sistema utiliza o **Traefik** como reverse proxy para gerenciar o acesso aos serviços através de URLs amigáveis e DNS personalizados.
+O sistema utiliza o **Traefik existente** no seu servidor para gerenciar o acesso aos serviços através de URLs amigáveis e DNS personalizados.
 
 ### 🎯 **Serviços Acessíveis via HTTP (Traefik)**
 
-| Serviço | URL | Descrição |
-|---------|-----|-----------|
-| **Traefik Dashboard** | `http://traefik.gwan.com.br` | Dashboard do Traefik |
-| **Kibana** | `http://kibana.gwan.com.br` | Interface de visualização de logs |
-| **Jaeger** | `http://jaeger.gwan.com.br` | Interface de traces |
-| **Prometheus** | `http://prometheus.gwan.com.br` | Interface de métricas |
-| **Alertmanager** | `http://alertmanager.gwan.com.br` | Interface de alertas |
+| Serviço | URL | Porta Externa | Descrição |
+|---------|-----|---------------|-----------|
+| **Kibana** | `http://kibana.gwan.com.br` | 5602 | Interface de visualização de logs |
+| **Jaeger** | `http://jaeger.gwan.com.br` | 16687 | Interface de traces |
+| **Prometheus** | `http://prometheus.gwan.com.br` | 9091 | Interface de métricas |
+| **Alertmanager** | `http://alertmanager.gwan.com.br` | 9094 | Interface de alertas |
 
 ### 🔌 **Serviços para Conexão de Aplicações**
 
@@ -190,14 +189,6 @@ O sistema utiliza o **Traefik** como reverse proxy para gerenciar o acesso aos s
 | **Elasticsearch** | 9200 | Armazenamento interno |
 | **Logstash** | 9600 | API interna |
 | **OTEL Collector** | 8888 | Métricas internas |
-
-### ✅ **Vantagens do Traefik**
-
-1. **Segurança**: Serviços internos não expostos publicamente
-2. **Performance**: Load balancing e SSL automático
-3. **Simplicidade**: URLs amigáveis para acesso
-4. **Flexibilidade**: Portas específicas para cada tipo de conexão
-5. **Monitoramento**: Dashboard para acompanhar tráfego
 
 ## 📋 Pré-requisitos
 
@@ -227,8 +218,10 @@ O sistema utiliza o **Traefik** como reverse proxy para gerenciar o acesso aos s
 ### **Portas do Sistema Gwan APM**
 | Serviço | Porta | Descrição |
 |---------|-------|-----------|
-| **Traefik APM** | 8081, 8444 | Reverse proxy para APM |
-| **Traefik Dashboard** | 8082 | Dashboard do Traefik APM |
+| **Kibana** | 5602 | Interface de visualização |
+| **Jaeger** | 16687 | Interface de traces |
+| **Prometheus** | 9091 | Interface de métricas |
+| **Alertmanager** | 9094 | Interface de alertas |
 | **Logstash** | 5044, 5000, 5001 | Coleta de logs |
 | **OTEL Collector** | 4317, 4318 | Telemetria |
 
@@ -254,11 +247,10 @@ cp .env.example .env
 5. Clique em "Deploy the stack"
 
 ### 4. Acesse as interfaces
-- **📊 Kibana**: `http://kibana.gwan.com.br:8081` (Logs e Visualização)
-- **🔍 Jaeger**: `http://jaeger.gwan.com.br:8081` (Traces e Spans)
-- **📊 Prometheus**: `http://prometheus.gwan.com.br:8081` (Métricas)
-- **🚨 Alertmanager**: `http://alertmanager.gwan.com.br:8081` (Alertas Críticos)
-- **🔧 Traefik Dashboard**: `http://traefik.gwan.com.br:8081` (Status do Proxy)
+- **📊 Kibana**: `http://kibana.gwan.com.br` (Logs e Visualização)
+- **🔍 Jaeger**: `http://jaeger.gwan.com.br` (Traces e Spans)
+- **📊 Prometheus**: `http://prometheus.gwan.com.br` (Métricas)
+- **🚨 Alertmanager**: `http://alertmanager.gwan.com.br` (Alertas Críticos)
 
 ## 📊 Monitoramento e Alertas
 

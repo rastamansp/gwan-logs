@@ -1,36 +1,4 @@
 services:
-  # Traefik - Reverse Proxy e Load Balancer
-  traefik:
-    image: traefik:v2.10
-    container_name: gwan-traefik
-    command:
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:8081"
-      - "--entrypoints.websecure.address=:8444"
-      - "--log.level=INFO"
-    ports:
-      - "8081:8081"
-      - "8444:8444"
-      - "8082:8082"  # Dashboard Traefik
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-    networks:
-      - gwan
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8082/ping || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.gwan.com.br`)"
-      - "traefik.http.routers.traefik-dashboard.entrypoints=web"
-      - "traefik.http.services.traefik-dashboard.loadbalancer.server.port=8082"
-
   # Elasticsearch - Armazenamento de logs
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.9.1
@@ -113,6 +81,8 @@ services:
       timeout: 120s
       retries: 3
       start_period: 1200s
+    ports:
+      - "5602:5601"   # Interface Kibana (5601 interno)
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.kibana.rule=Host(`kibana.gwan.com.br`)"
@@ -163,6 +133,8 @@ services:
       timeout: 30s
       retries: 5
       start_period: 120s
+    ports:
+      - "16687:16686"   # Interface Jaeger (16686 interno)
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.jaeger.rule=Host(`jaeger.gwan.com.br`)"
@@ -196,6 +168,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    ports:
+      - "9091:9090"   # Interface Prometheus (9090 interno)
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.prometheus.rule=Host(`prometheus.gwan.com.br`)"
@@ -223,6 +197,8 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    ports:
+      - "9094:9093"   # Interface Alertmanager (9093 interno)
     labels:
       - "traefik.enable=true"
       - "traefik.http.routers.alertmanager.rule=Host(`alertmanager.gwan.com.br`)"
