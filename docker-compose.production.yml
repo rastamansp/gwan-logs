@@ -40,8 +40,6 @@ services:
       - LS_JAVA_OPTS=-Xms512m -Xmx1g
     volumes:
       - ls_data:/usr/share/logstash/data
-      - ./configs/logstash/pipelines.yml:/usr/share/logstash/config/pipelines.yml:ro
-      - ./configs/logstash/pipelines:/usr/share/logstash/pipeline:ro
     ports:
       - "5044:5044"
       - "9600:9600"
@@ -95,8 +93,6 @@ services:
     image: otel/opentelemetry-collector:0.96.0
     container_name: gwan-otel-collector
     command: ["--config=/etc/otel-collector-config.yaml"]
-    volumes:
-      - ./configs/otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     ports:
       - "4317:4317"   # OTLP gRPC
       - "4318:4318"   # OTLP HTTP
@@ -156,7 +152,6 @@ services:
       - '--web.enable-lifecycle'
     volumes:
       - prometheus_data:/prometheus
-      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
     ports:
       - "9090:9090"
     networks:
@@ -183,7 +178,6 @@ services:
       - '--storage.path=/alertmanager'
     volumes:
       - alertmanager_data:/alertmanager
-      - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     ports:
       - "9093:9093"
     networks:
