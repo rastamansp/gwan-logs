@@ -98,7 +98,7 @@ services:
 
 # OpenTelemetry Collector - Coleta de telemetria
   otel-collector:
-    image: otel/opentelemetry-collector:latest
+    image: otel/opentelemetry-collector:0.96.0
     container_name: gwan-otel-collector
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
@@ -127,7 +127,7 @@ services:
 
 # Jaeger - Visualização de traces
   jaeger:
-    image: jaegertracing/all-in-one:latest
+    image: jaegertracing/all-in-one:1.55.0
     container_name: gwan-jaeger
     environment:
       - COLLECTOR_OTLP_ENABLED=true
@@ -154,10 +154,72 @@ services:
       - "traefik.http.routers.jaeger.entrypoints=web"
       - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
 
+# Prometheus - Coleta de métricas
+  prometheus:
+    image: prom/prometheus:v2.48.1
+    container_name: gwan-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    volumes:
+      - prometheus_data:/prometheus
+      - ./configs/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "9090:9090"
+    networks:
+      - gwan
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9090/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.prometheus.rule=Host(`${PROMETHEUS_DOMAIN}`)"
+      - "traefik.http.routers.prometheus.entrypoints=web"
+      - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
+
+# Alertmanager - Gerenciamento de alertas
+  alertmanager:
+    image: prom/alertmanager:v0.26.0
+    container_name: gwan-alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    volumes:
+      - alertmanager_data:/alertmanager
+      - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    ports:
+      - "9093:9093"
+    networks:
+      - gwan
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:9093/-/healthy || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.alertmanager.rule=Host(`${ALERTMANAGER_DOMAIN}`)"
+      - "traefik.http.routers.alertmanager.entrypoints=web"
+      - "traefik.http.services.alertmanager.loadbalancer.server.port=9093"
+
 volumes:
   es_data:
   kb_data:
   ls_data:
+  prometheus_data:
+  alertmanager_data:
 
 networks:
   gwan:

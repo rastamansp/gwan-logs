@@ -7,18 +7,6 @@ receivers:
       http:
         endpoint: 0.0.0.0:4318
 
-  # Jaeger receiver para traces
-  jaeger:
-    protocols:
-      grpc:
-        endpoint: 0.0.0.0:14250
-      thrift_http:
-        endpoint: 0.0.0.0:14268
-      thrift_binary:
-        endpoint: 0.0.0.0:6832
-      thrift_compact:
-        endpoint: 0.0.0.0:6831
-
   # Prometheus receiver para métricas
   prometheus:
     config:
@@ -55,50 +43,43 @@ processors:
         action: upsert
 
 exporters:
-  # Exporta logs para Elasticsearch
-  logging:
-    loglevel: info
+  # Debug exporter para logs
+  debug:
+    verbosity: detailed
 
-  # Exporta traces para Jaeger
-  jaeger:
-    endpoint: jaeger:14250
+  # Exporta traces para OTLP (que vai para Jaeger)
+  otlp:
+    endpoint: jaeger:4317
     tls:
       insecure: true
 
   # Exporta métricas para Prometheus
   prometheus:
-    endpoint: 0.0.0.0:8888
+    endpoint: 0.0.0.0:8889
 
-  # Exporta logs para Logstash
-  logstash:
-    endpoint: logstash:5044
-    tls:
-      insecure: true
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
 
 service:
   pipelines:
     # Pipeline para traces
     traces:
-      receivers: [otlp, jaeger]
+      receivers: [otlp]
       processors: [batch, attributes, resource]
-      exporters: [jaeger, logging]
+      exporters: [otlp, debug]
 
     # Pipeline para métricas
     metrics:
       receivers: [otlp, prometheus]
       processors: [batch, resource]
-      exporters: [prometheus, logging]
+      exporters: [prometheus, debug]
 
     # Pipeline para logs
     logs:
       receivers: [otlp]
       processors: [batch, attributes, resource]
-      exporters: [logstash, logging]
+      exporters: [debug]
 
   extensions:
-    health_check:
-      endpoint: 0.0.0.0:13133
-    pprof:
-      endpoint: 0.0.0.0:1777
-    zpages:
-      endpoint: 0.0.0.0:55679
+    - health_check

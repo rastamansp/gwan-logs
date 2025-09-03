@@ -89,10 +89,10 @@ const logger = winston.createLogger({
     new ElasticsearchTransport({
       level: 'info',
       clientOpts: {
-        node: process.env.ELASTICSEARCH_URL || 'http://elasticsearch:9200',
+        node: process.env.ELASTICSEARCH_URL || 'http://localhost:9200',
         auth: {
           username: process.env.ELASTIC_USERNAME || 'elastic',
-          password: process.env.ELASTIC_PASSWORD || 'GwanLogs2024!'
+          password: process.env.ELASTIC_PASSWORD || 'pazdeDeus@2025'
         },
         tls: {
           rejectUnauthorized: false
@@ -146,9 +146,6 @@ const loggerMiddleware = (req, res, next) => {
       'http.remote_ip': req.ip,
     }
   });
-  
-  // Adiciona span ao contexto
-  const ctx = trace.setSpan(trace.active(), span);
   
   res.on('finish', () => {
     const duration = Date.now() - start;

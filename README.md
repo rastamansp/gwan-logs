@@ -1,40 +1,33 @@
-# Gwan Logs - Sistema de Logs Centralizado com OpenTelemetry
+# Gwan APM - Sistema de Observabilidade Completa
 
-Sistema de logs centralizado para aplicações Node.js e Python rodando no Portainer, utilizando Elasticsearch, Kibana, Logstash e OpenTelemetry para observabilidade completa.
+Sistema de observabilidade completa para aplicações Node.js e Python rodando no Portainer, utilizando Elasticsearch, Logstash, Kibana, OpenTelemetry, Jaeger e Prometheus para monitoramento, logs e traces distribuídos.
 
 ## 🏗️ Arquitetura
 
-```
-┌─────────────┐    ┌─────────────┐    ┌─────────────┐    ┌─────────────┐
-│   Aplicações │    │   Filebeat   │    │ Elasticsearch│    │   Kibana    │
-│  (Node.js/   │───▶│   (Coleta)   │───▶│ (Armazenamento)│───▶│ (Visualização)│
-│   Python)    │    │             │    │             │    │             │
-└─────────────┘    └─────────────┘    └─────────────┘    └─────────────┘
-                                │
-                                ▼
-                    ┌─────────────────┐
-                    │   Logstash      │
-                    │ (Processamento) │
-                    └─────────────────┘
-                                │
-                                ▼
-                    ┌─────────────────┐
-                    │ OpenTelemetry   │
-                    │   Collector     │
-                    └─────────────────┘
-                                │
-                                ▼
-                    ┌─────────────────┐    ┌─────────────────┐
-                    │    Jaeger       │    │   Prometheus    │
-                    │ (Traces/Spans)  │    │   (Métricas)    │
-                    └─────────────────┘    └─────────────────┘
+```mermaid
+graph TB
+    A[Aplicações<br/>Node.js/Python] --> B[OpenTelemetry<br/>Collector]
+    B --> C[Logstash<br/>Processamento]
+    B --> D[Prometheus<br/>Métricas]
+    B --> E[Jaeger<br/>Traces]
+    C --> F[Elasticsearch<br/>Armazenamento]
+    D --> G[Kibana<br/>Visualização]
+    E --> G
+    F --> G
+    
+    style A fill:#e1f5fe
+    style B fill:#fff3e0
+    style C fill:#f3e5f5
+    style D fill:#e8f5e8
+    style E fill:#fff8e1
+    style F fill:#fce4ec
+    style G fill:#e0f2f1
 ```
 
 ## 🔍 Observabilidade Completa
 
-### OpenTelemetry Integration
-
-O sistema agora inclui **OpenTelemetry** para observabilidade completa com:
+### APM (Application Performance Management)
+O sistema evoluiu de um simples sistema de logs para um **APM completo** que oferece:
 
 #### 📊 **Métricas (Metrics)**
 - **Contadores**: Total de requisições, erros, operações
@@ -42,7 +35,7 @@ O sistema agora inclui **OpenTelemetry** para observabilidade completa com:
 - **Gauges**: Uso de memória, CPU, conexões ativas
 - **Auto-instrumentação**: Métricas automáticas do sistema
 
-#### 🔗 **Traces (Rastreamento)**
+#### 🔗 **Traces (Rastreamento Distribuído)**
 - **Spans distribuídos**: Rastreamento de requisições entre serviços
 - **Contexto distribuído**: Propagação de contexto entre aplicações
 - **Latência**: Medição de tempo de resposta
@@ -54,18 +47,102 @@ O sistema agora inclui **OpenTelemetry** para observabilidade completa com:
 - **Filtros**: Remoção automática de dados sensíveis
 - **Enriquecimento**: Adição de metadados automáticos
 
-### Fluxo de Dados OpenTelemetry
+### Fluxo de Dados APM
 
+```mermaid
+flowchart LR
+    A[Aplicação<br/>Node.js/Python] --> B[📝 Logs]
+    A --> C[🔍 Traces]
+    A --> D[📈 Metrics]
+    A --> E[📊 Telemetria]
+    
+    B --> F[Logstash]
+    C --> G[OpenTelemetry<br/>Collector]
+    D --> G
+    E --> G
+    
+    F --> H[Elasticsearch]
+    G --> I[Jaeger]
+    G --> J[Prometheus]
+    G --> F
+    
+    H --> K[Kibana]
+    I --> K
+    J --> K
+    
+    style A fill:#e1f5fe
+    style F fill:#f3e5f5
+    style G fill:#fff3e0
+    style H fill:#fce4ec
+    style I fill:#fff8e1
+    style J fill:#e8f5e8
+    style K fill:#e0f2f1
 ```
-Aplicação Node.js/Python
-    │
-    ├── Logs ──────────────▶ Logstash ──▶ Elasticsearch
-    │
-    ├── Traces ────────────▶ OpenTelemetry Collector ──▶ Jaeger
-    │
-    ├── Metrics ───────────▶ OpenTelemetry Collector ──▶ Prometheus
-    │
-    └── Logs (OTLP) ───────▶ OpenTelemetry Collector ──▶ Logstash
+
+### Sequência de uma Requisição HTTP
+
+```mermaid
+sequenceDiagram
+    participant Client
+    participant App as Aplicação Node.js
+    participant OTEL as OpenTelemetry Collector
+    participant LS as Logstash
+    participant ES as Elasticsearch
+    participant J as Jaeger
+    participant P as Prometheus
+    participant K as Kibana
+
+    Client->>App: HTTP Request
+    App->>App: Criar Span (TraceId: abc123)
+    App->>OTEL: Enviar Trace
+    App->>OTEL: Enviar Metrics
+    App->>LS: Enviar Log (TraceId: abc123)
+    
+    OTEL->>J: Armazenar Trace
+    OTEL->>P: Armazenar Metrics
+    OTEL->>LS: Enviar Logs OTLP
+    
+    LS->>ES: Indexar Logs
+    ES->>K: Disponibilizar dados
+    J->>K: Disponibilizar traces
+    P->>K: Disponibilizar metrics
+    
+    Note over K: Correlação via TraceId
+```
+
+### Arquitetura de Rede
+
+```mermaid
+graph TB
+    subgraph "Rede Externa"
+        T[Traefik<br/>Load Balancer]
+    end
+    
+    subgraph "Rede Docker 'gwan'"
+        subgraph "Stack Gwan APM"
+            ES[Elasticsearch<br/>9200]
+            K[Kibana<br/>5601]
+            LS[Logstash<br/>5044/9600]
+            OTEL[OpenTelemetry<br/>4318/8888]
+            J[Jaeger<br/>16686]
+            P[Prometheus<br/>9090]
+        end
+    end
+    
+    T --> ES
+    T --> K
+    T --> LS
+    T --> OTEL
+    T --> J
+    T --> P
+    
+    style T fill:#ffebee
+    style ES fill:#fce4ec
+    style K fill:#e0f2f1
+    style LS fill:#f3e5f5
+    style OTEL fill:#fff3e0
+    style J fill:#fff8e1
+    style P fill:#e8f5e8
 ```
 
 ## 📋 Pré-requisitos
@@ -98,12 +175,29 @@ cp .env.example .env
 5. Clique em "Deploy the stack"
 
 ### 4. Acesse as interfaces
-- **Kibana**: `https://kibana.gwan.com.br` (Logs e Visualização)
-- **Jaeger**: `https://jaeger.gwan.com.br` (Traces e Spans)
-- **OpenTelemetry Collector**: `https://otel.gwan.com.br` (Métricas)
-- **Elasticsearch**: `https://elasticsearch.gwan.com.br` (API REST)
+- **📊 Kibana**: `https://kibana.gwan.com.br` (Logs e Visualização)
+- **🔍 Jaeger**: `https://jaeger.gwan.com.br` (Traces e Spans)
+- **📊 Prometheus**: `https://prometheus.gwan.com.br` (Métricas)
+- **🚨 Alertmanager**: `https://alertmanager.gwan.com.br` (Alertas Críticos)
+- **🔧 OpenTelemetry Collector**: `https://otel.gwan.com.br` (Status)
+- **📝 Logstash**: `https://logstash.gwan.com.br` (Status)
+- **🗄️ Elasticsearch**: `https://elasticsearch.gwan.com.br` (API REST)
 
-> **💡 Nota**: Este repositório contém apenas o módulo de logs. Para monitoramento completo, consulte o repositório `gwan-monitoring`
+## 📊 Monitoramento e Alertas
+
+### Alertas Configurados
+O sistema monitora apenas alertas críticos de disponibilidade:
+
+- **Elasticsearch Down**: Serviço de armazenamento indisponível
+- **Kibana Down**: Interface de visualização indisponível  
+- **Prometheus Down**: Coletor de métricas indisponível
+- **OpenTelemetry Collector Down**: Coletor de telemetria indisponível
+
+### Métricas Disponíveis
+- **Aplicação**: Requisições, erros, latência (via Prometheus)
+- **Sistema**: Health checks dos serviços
+- **Logs**: Análise completa via Kibana
+- **Traces**: Rastreamento distribuído via Jaeger
 
 ## 🔧 Configuração das Aplicações
 
@@ -239,23 +333,29 @@ FlaskInstrumentor().instrument()
 
 ## 📊 Visualização de Dados
 
-### Kibana - Logs e Visualização
+### Kibana - Interface Principal
 - **Discover**: Pesquisa e análise de logs
 - **Dashboards**: Visualizações customizadas
 - **Index Patterns**: Configuração de índices
 - **Alertas**: Configuração de alertas baseados em logs
+- **Métricas**: Visualizações de performance
 
-### Jaeger - Traces e Spans
+### Jaeger - Distributed Tracing
 - **Search**: Busca de traces por serviço, operação, tags
 - **Trace View**: Visualização detalhada de traces
 - **Dependencies**: Mapa de dependências entre serviços
 - **Metrics**: Métricas de latência e throughput
 
-### OpenTelemetry Collector - Métricas
-- **Prometheus Endpoint**: `/metrics` para scraping
-- **Health Check**: `/health` para monitoramento
-- **Configuration**: Pipeline de processamento
-- **Exporters**: Configuração de destinos
+### Prometheus - Métricas Básicas
+- **Time-series**: Dados históricos de performance
+- **Query Language**: PromQL para consultas avançadas
+- **Alertas**: Alertas críticos de disponibilidade
+- **Health Checks**: Status dos serviços
+
+### Alertmanager - Gestão de Alertas
+- **Agrupamento**: Agrupa alertas similares
+- **Supressão**: Suprime alertas menores quando há problemas críticos
+- **Notificações**: Distribui alertas pelos canais configurados
 
 ## 🔒 Segurança
 
@@ -267,13 +367,15 @@ FlaskInstrumentor().instrument()
 
 ## 📈 Escalabilidade
 
-O sistema foi projetado para:
+O sistema APM foi projetado para:
 - **Aplicações**: Suportar até 100 aplicações simultâneas
 - **Logs**: Processar 50.000 logs por minuto
 - **Traces**: Rastrear 10.000 traces por minuto
 - **Métricas**: Coletar 1.000 métricas por segundo
 - **Armazenamento**: 90 dias de retenção configurável
 - **Backup**: Backup automático diário
+- **Performance**: Latência < 100ms para consultas
+- **Disponibilidade**: 99.9% uptime
 
 ## 🛠️ Manutenção
 
@@ -332,10 +434,28 @@ docker logs gwan-jaeger
 curl http://localhost:8888/metrics
 
 # Verificar configuração do Prometheus
-docker logs gwan-otel-collector | grep prometheus
+docker logs gwan-prometheus
+
+# Verificar targets no Prometheus
+curl http://localhost:9090/api/v1/targets
 
 # Verificar conectividade da aplicação
 telnet localhost 4318
+```
+
+#### 4. Prometheus sem dados
+```bash
+# Verificar status do Prometheus
+curl http://localhost:9090/-/healthy
+
+# Verificar targets
+curl http://localhost:9090/api/v1/targets
+
+# Verificar configuração
+docker exec gwan-prometheus cat /etc/prometheus/prometheus.yml
+
+# Verificar logs
+docker logs gwan-prometheus
 ```
 
 #### 4. Logs não aparecem no Kibana
@@ -350,6 +470,21 @@ docker logs gwan-logstash
 curl http://localhost:9200/_cat/indices
 ```
 
+#### 5. Alertmanager não envia alertas
+```bash
+# Verificar status do Alertmanager
+curl http://localhost:9093/-/healthy
+
+# Verificar configuração
+docker exec gwan-alertmanager cat /etc/alertmanager/alertmanager.yml
+
+# Verificar logs
+docker logs gwan-alertmanager
+
+# Verificar conectividade com Prometheus
+curl http://localhost:9090/api/v1/alertmanagers
+```
+
 ### Logs do Sistema
 ```bash
 # Logs do OpenTelemetry Collector
@@ -357,6 +492,12 @@ docker logs gwan-otel-collector
 
 # Logs do Jaeger
 docker logs gwan-jaeger
+
+# Logs do Prometheus
+docker logs gwan-prometheus
+
+# Logs do Alertmanager
+docker logs gwan-alertmanager
 
 # Logs do Elasticsearch
 docker logs gwan-elasticsearch
