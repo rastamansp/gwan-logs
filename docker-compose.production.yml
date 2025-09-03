@@ -7,20 +7,20 @@ services:
       - "--api.insecure=true"
       - "--providers.docker=true"
       - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.address=:8080"
+      - "--entrypoints.websecure.address=:8443"
       - "--log.level=INFO"
     ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"  # Dashboard Traefik
+      - "8080:8080"
+      - "8443:8443"
+      - "8081:8081"  # Dashboard Traefik
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - gwan
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/ping || exit 1"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8081/ping || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -29,7 +29,7 @@ services:
       - "traefik.enable=true"
       - "traefik.http.routers.traefik-dashboard.rule=Host(`traefik.gwan.com.br`)"
       - "traefik.http.routers.traefik-dashboard.entrypoints=web"
-      - "traefik.http.services.traefik-dashboard.loadbalancer.server.port=8080"
+      - "traefik.http.services.traefik-dashboard.loadbalancer.server.port=8081"
 
   # Elasticsearch - Armazenamento de logs
   elasticsearch:

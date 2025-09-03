@@ -124,7 +124,7 @@ sequenceDiagram
 ```mermaid
 graph TB
     subgraph "Rede Externa"
-        T[Traefik<br/>Load Balancer<br/>Porta 80/443]
+        T[Traefik<br/>Load Balancer<br/>Porta 8080/8443]
     end
     
     subgraph "Rede Docker 'gwan'"
@@ -229,11 +229,11 @@ cp .env.example .env
 5. Clique em "Deploy the stack"
 
 ### 4. Acesse as interfaces
-- **📊 Kibana**: `http://kibana.gwan.com.br` (Logs e Visualização)
-- **🔍 Jaeger**: `http://jaeger.gwan.com.br` (Traces e Spans)
-- **📊 Prometheus**: `http://prometheus.gwan.com.br` (Métricas)
-- **🚨 Alertmanager**: `http://alertmanager.gwan.com.br` (Alertas Críticos)
-- **🔧 Traefik Dashboard**: `http://traefik.gwan.com.br` (Status do Proxy)
+- **📊 Kibana**: `http://kibana.gwan.com.br:8080` (Logs e Visualização)
+- **🔍 Jaeger**: `http://jaeger.gwan.com.br:8080` (Traces e Spans)
+- **📊 Prometheus**: `http://prometheus.gwan.com.br:8080` (Métricas)
+- **🚨 Alertmanager**: `http://alertmanager.gwan.com.br:8080` (Alertas Críticos)
+- **🔧 Traefik Dashboard**: `http://traefik.gwan.com.br:8080` (Status do Proxy)
 
 ## 📊 Monitoramento e Alertas
 
