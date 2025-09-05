@@ -121,7 +121,8 @@ services:
     container_name: gwan-jaeger
     environment:
       - COLLECTOR_OTLP_ENABLED=true
-      - COLLECTOR_OTLP_ENDPOINT=otel-collector:4317
+      - COLLECTOR_OTLP_ENDPOINT=http://otel-collector:4317
+      - QUERY_BASE_PATH=/
     networks:
       - gwan
     depends_on:
@@ -137,9 +138,14 @@ services:
       - "16687:16686"   # Interface Jaeger (16686 interno)
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=gwan"
       - "traefik.http.routers.jaeger.rule=Host(`jaeger.gwan.com.br`)"
       - "traefik.http.routers.jaeger.entrypoints=web"
+      - "traefik.http.routers.jaeger.service=jaeger"
       - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
+      - "traefik.http.services.jaeger.loadbalancer.server.scheme=http"
+      - "traefik.http.middlewares.jaeger-headers.headers.customrequestheaders.X-Forwarded-Proto=http"
+      - "traefik.http.routers.jaeger.middlewares=jaeger-headers"
     # Configurações de recursos para produção
     # Limite de memória: 512MB
     # Reserva de memória: 256MB

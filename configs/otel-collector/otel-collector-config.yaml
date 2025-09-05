@@ -49,7 +49,7 @@ exporters:
 
   # Exporta traces para OTLP (que vai para Jaeger)
   otlp:
-    endpoint: jaeger:4317
+    endpoint: jaeger:14250
     tls:
       insecure: true
 
