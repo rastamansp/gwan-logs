@@ -271,6 +271,47 @@ services:
     # Limite de memória: 512MB
     # Reserva de memória: 256MB
 
+  # Inicializador de configuração do Alertmanager
+  alertmanager-config-init:
+    image: alpine:latest
+    container_name: gwan-alertmanager-config-init
+    command: |
+      sh -c "
+        cat > /config/alertmanager.yml << 'EOF'
+      global:
+        resolve_timeout: 5m
+        smtp_smarthost: 'localhost:587'
+        smtp_from: 'alertmanager@gwan.com.br'
+        smtp_auth_username: 'alertmanager@gwan.com.br'
+        smtp_auth_password: 'password'
+
+      route:
+        group_by: ['alertname']
+        group_wait: 10s
+        group_interval: 10s
+        repeat_interval: 1h
+        receiver: 'web.hook'
+
+      receivers:
+        - name: 'web.hook'
+          webhook_configs:
+            - url: 'http://127.0.0.1:5001/'
+
+      inhibit_rules:
+        - source_match:
+            severity: 'critical'
+          target_match:
+            severity: 'warning'
+          equal: ['alertname', 'dev', 'instance']
+      EOF
+        echo 'Configuração do Alertmanager criada com sucesso!'
+      "
+    volumes:
+      - alertmanager_config_volume:/config
+    networks:
+      - gwan
+    restart: "no"
+
   # Alertmanager - Gerenciamento de alertas
   alertmanager:
     image: prom/alertmanager:v0.26.0
@@ -280,9 +321,11 @@ services:
       - '--storage.path=/alertmanager'
     volumes:
       - alertmanager_data:/alertmanager
-      - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+      - alertmanager_config_volume:/etc/alertmanager:ro
     networks:
       - gwan
+    depends_on:
+      - alertmanager-config-init
     restart: unless-stopped
     ports:
       - "9094:9093"   # Interface Alertmanager (9093 interno)
@@ -308,6 +351,8 @@ volumes:
   prometheus_data:
     driver: local
   alertmanager_data:
+    driver: local
+  alertmanager_config_volume:
     driver: local
   otel_config_volume:
     driver: local
