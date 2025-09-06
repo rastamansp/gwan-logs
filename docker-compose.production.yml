@@ -85,6 +85,7 @@ services:
       - "5602:5601"   # Interface Kibana (5601 interno)
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=gwan"
       - "traefik.http.routers.kibana.rule=Host(`kibana.gwan.com.br`)"
       - "traefik.http.routers.kibana.entrypoints=web"
       - "traefik.http.services.kibana.loadbalancer.server.port=5601"
@@ -174,9 +175,9 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector:0.88.0
     container_name: gwan-otel-collector
-    command: ["--config=/etc/otel-collector-config.yaml"]
+    command: ["--config=/etc/otel/otel-collector-config.yaml"]
     volumes:
-      - otel_config_volume:/etc/otel-collector-config.yaml:ro
+      - otel_config_volume:/etc/otel:ro
     depends_on:
       - otel-config-init
       - elasticsearch
@@ -268,6 +269,7 @@ services:
       - "9091:9090"   # Interface Prometheus (9090 interno)
     labels:
       - "traefik.enable=true"
+      - "traefik.docker.network=gwan"
       - "traefik.http.routers.prometheus.rule=Host(`prometheus.gwan.com.br`)"
       - "traefik.http.routers.prometheus.entrypoints=web"
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
