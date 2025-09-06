@@ -132,8 +132,8 @@ services:
         debug:
           verbosity: detailed
 
-        jaeger:
-          endpoint: jaeger:14250
+        otlp/jaeger:
+          endpoint: jaeger:4317
           tls:
             insecure: true
 
@@ -145,7 +145,7 @@ services:
           traces:
             receivers: [otlp]
             processors: [memory_limiter, batch]
-            exporters: [debug, jaeger]
+            exporters: [debug, otlp/jaeger]
 
           metrics:
             receivers: [otlp, prometheus]
