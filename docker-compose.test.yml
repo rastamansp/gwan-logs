@@ -28,10 +28,8 @@ services:
 
   # OpenTelemetry Collector - Coleta de telemetria
   otel-collector:
-    image: otel/opentelemetry-collector:0.96.0
+    image: gwan-otel-collector:latest
     container_name: gwan-otel-collector-test
-    volumes:
-      - ./configs/otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     ports:
       - "4317:4317"   # OTLP gRPC - Para aplicações
       - "4318:4318"   # OTLP HTTP - Para aplicações
