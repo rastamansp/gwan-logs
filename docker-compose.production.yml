@@ -88,6 +88,7 @@ services:
       - "traefik.docker.network=gwan"
       - "traefik.http.routers.kibana.rule=Host(`kibana.gwan.com.br`)"
       - "traefik.http.routers.kibana.entrypoints=websecure"
+      - "traefik.http.routers.kibana.tls=true"
       - "traefik.http.routers.kibana.tls.certresolver=letsencrypt"
       - "traefik.http.services.kibana.loadbalancer.server.port=5601"
     # Configurações de recursos para produção
@@ -221,6 +222,7 @@ services:
       - "traefik.docker.network=gwan"
       - "traefik.http.routers.jaeger.rule=Host(`jaeger.gwan.com.br`)"
       - "traefik.http.routers.jaeger.entrypoints=websecure"
+      - "traefik.http.routers.jaeger.tls=true"
       - "traefik.http.routers.jaeger.tls.certresolver=letsencrypt"
       - "traefik.http.routers.jaeger.service=jaeger"
       - "traefik.http.services.jaeger.loadbalancer.server.port=16686"
@@ -262,6 +264,7 @@ services:
       - "traefik.docker.network=gwan"
       - "traefik.http.routers.prometheus.rule=Host(`prometheus.gwan.com.br`)"
       - "traefik.http.routers.prometheus.entrypoints=websecure"
+      - "traefik.http.routers.prometheus.tls=true"
       - "traefik.http.routers.prometheus.tls.certresolver=letsencrypt"
       - "traefik.http.services.prometheus.loadbalancer.server.port=9090"
     # Configurações de recursos para produção
@@ -287,6 +290,7 @@ services:
       - "traefik.docker.network=gwan"
       - "traefik.http.routers.alertmanager.rule=Host(`alertmanager.gwan.com.br`)"
       - "traefik.http.routers.alertmanager.entrypoints=websecure"
+      - "traefik.http.routers.alertmanager.tls=true"
       - "traefik.http.routers.alertmanager.tls.certresolver=letsencrypt"
       - "traefik.http.services.alertmanager.loadbalancer.server.port=9093"
     # Configurações de recursos para produção
