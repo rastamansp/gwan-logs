@@ -98,10 +98,7 @@ services:
     container_name: gwan-otel-collector
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
-      - type: bind
-        source: ${PWD}/configs/otel-collector/otel-collector-config.yaml
-        target: /etc/otel-collector-config.yaml
-        read_only: true
+      - ./configs/otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
     ports:
       - "4317:4317"   # OTLP gRPC - Para aplicações
       - "4318:4318"   # OTLP HTTP - Para aplicações
