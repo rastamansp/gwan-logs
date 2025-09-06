@@ -1,8 +1,0 @@
-FROM otel/opentelemetry-collector:0.96.0
-
-# Copiar configuração diretamente para a imagem
-COPY configs/otel-collector/otel-collector-config.yaml /etc/otel-collector-config.yaml
-
-# Manter o entrypoint original
-ENTRYPOINT ["/otelcol"]
-CMD ["--config=/etc/otel-collector-config.yaml"]
