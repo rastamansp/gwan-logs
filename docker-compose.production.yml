@@ -193,13 +193,12 @@ services:
       - otel_config_volume:/shared
     depends_on:
       - otel-config-init
+      - elasticsearch
     ports:
       - "4317:4317"   # OTLP gRPC - Para aplicações
       - "4318:4318"   # OTLP HTTP - Para aplicações
     networks:
       - gwan
-    depends_on:
-      - elasticsearch
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:13133/ || exit 1"]
