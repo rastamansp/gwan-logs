@@ -96,36 +96,9 @@ services:
   otel-collector:
     image: otel/opentelemetry-collector:0.96.0
     container_name: gwan-otel-collector
-    command: ["--config=/etc/otel-collector-config.yaml"]
-    volumes:
-      - otel_config:/etc/otel-collector-config.yaml:ro
-    ports:
-      - "4317:4317"   # OTLP gRPC - Para aplicações
-      - "4318:4318"   # OTLP HTTP - Para aplicações
-    networks:
-      - gwan
-    depends_on:
-      - otel-config-init
-      - elasticsearch
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:13133/ || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
-    # Configurações de recursos para produção
-    # Limite de memória: 512MB
-    # Reserva de memória: 256MB
-
-  # Inicializador de configuração do OTEL Collector
-  otel-config-init:
-    image: alpine:latest
-    container_name: gwan-otel-config-init
     command: |
       sh -c "
-        mkdir -p /tmp/config
-        cat > /tmp/config/otel-collector-config.yaml << 'EOF'
+        cat > /etc/otel-collector-config.yaml << 'EOF'
       receivers:
         otlp:
           protocols:
@@ -189,14 +162,25 @@ services:
         health_check:
           endpoint: 0.0.0.0:13133
       EOF
-        cp /tmp/config/otel-collector-config.yaml /etc/otel-collector-config.yaml
-        echo 'Configuração criada com sucesso!'
+        /otelcol --config=/etc/otel-collector-config.yaml
       "
-    volumes:
-      - otel_config:/etc
+    ports:
+      - "4317:4317"   # OTLP gRPC - Para aplicações
+      - "4318:4318"   # OTLP HTTP - Para aplicações
     networks:
       - gwan
-    restart: "no"
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:13133/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    # Configurações de recursos para produção
+    # Limite de memória: 512MB
+    # Reserva de memória: 256MB
 
   # Jaeger - Visualização de traces
   jaeger:
@@ -316,8 +300,6 @@ volumes:
   prometheus_data:
     driver: local
   alertmanager_data:
-    driver: local
-  otel_config:
     driver: local
 
 networks:
