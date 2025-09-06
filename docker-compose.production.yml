@@ -133,9 +133,15 @@ services:
           verbosity: detailed
 
         otlp/jaeger:
-          endpoint: jaeger:14250
+          endpoint: jaeger:4317
           tls:
             insecure: true
+
+        elasticsearch:
+          endpoint: http://elasticsearch:9200
+          index: otel-logs
+          mapping:
+            mode: ecs
 
         prometheus:
           endpoint: '0.0.0.0:8889'
@@ -155,7 +161,7 @@ services:
           logs:
             receivers: [otlp]
             processors: [memory_limiter, batch]
-            exporters: [debug]
+            exporters: [debug, elasticsearch]
 
         extensions: [health_check]
         telemetry:
