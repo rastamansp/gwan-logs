@@ -98,7 +98,7 @@ services:
     container_name: gwan-otel-config-init
     command: |
       sh -c "
-        cat > /shared/otel-collector-config.yaml << 'EOF'
+        cat > /config/otel-collector-config.yaml << 'EOF'
       receivers:
         otlp:
           protocols:
@@ -165,32 +165,18 @@ services:
         echo 'Configuração criada com sucesso!'
       "
     volumes:
-      - otel_config_volume:/shared
+      - otel_config_volume:/config
     networks:
       - gwan
     restart: "no"
 
   # OpenTelemetry Collector - Coleta de telemetria
   otel-collector:
-    image: otel/opentelemetry-collector:0.96.0
+    image: otel/opentelemetry-collector:0.88.0
     container_name: gwan-otel-collector
-    entrypoint: ["/bin/sh", "-c"]
-    command: |
-      "
-      # Aguardar o arquivo de configuração ser criado
-      while [ ! -f /shared/otel-collector-config.yaml ]; do
-        echo 'Aguardando arquivo de configuração...'
-        sleep 1
-      done
-      
-      # Copiar arquivo para local correto
-      cp /shared/otel-collector-config.yaml /etc/otel-collector-config.yaml
-      
-      # Executar o collector
-      /otelcol --config=/etc/otel-collector-config.yaml
-      "
+    command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
-      - otel_config_volume:/shared
+      - otel_config_volume:/etc/otel-collector-config.yaml:ro
     depends_on:
       - otel-config-init
       - elasticsearch
