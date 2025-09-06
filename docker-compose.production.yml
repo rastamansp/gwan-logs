@@ -99,7 +99,7 @@ services:
     command: ["--config=/etc/otel-collector-config.yaml"]
     volumes:
       - type: bind
-        source: ./configs/otel-collector/otel-collector-config.yaml
+        source: ${PWD}/configs/otel-collector/otel-collector-config.yaml
         target: /etc/otel-collector-config.yaml
         read_only: true
     ports:
