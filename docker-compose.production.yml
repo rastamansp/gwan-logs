@@ -121,7 +121,6 @@ services:
     container_name: gwan-jaeger
     environment:
       - COLLECTOR_OTLP_ENABLED=true
-      - COLLECTOR_OTLP_ENDPOINT=${COLLECTOR_OTLP_ENDPOINT}
       - QUERY_BASE_PATH=/
       - SPAN_STORAGE_TYPE=memory
       - COLLECTOR_ZIPKIN_HOST_PORT=:9411
@@ -130,7 +129,8 @@ services:
       "--collector.otlp.grpc.host-port=0.0.0.0:4317",
       "--collector.otlp.http.host-port=0.0.0.0:4318",
       "--query.base-path=/",
-      "--span-storage.type=memory"
+      "--span-storage.type=memory",
+      "--reporter.grpc.host-port=otel-collector:4317"
     ]
     networks:
       - gwan
