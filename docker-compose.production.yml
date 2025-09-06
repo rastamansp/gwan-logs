@@ -280,6 +280,7 @@ services:
       - '--storage.path=/alertmanager'
     volumes:
       - alertmanager_data:/alertmanager
+      - ./configs/alertmanager/alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
     networks:
       - gwan
     restart: unless-stopped
