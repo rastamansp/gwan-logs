@@ -124,7 +124,8 @@ services:
     container_name: gwan-otel-config-init
     command: |
       sh -c "
-        cat > /etc/otel-collector-config.yaml << 'EOF'
+        mkdir -p /tmp/config
+        cat > /tmp/config/otel-collector-config.yaml << 'EOF'
       receivers:
         otlp:
           protocols:
@@ -188,10 +189,11 @@ services:
         health_check:
           endpoint: 0.0.0.0:13133
       EOF
+        cp /tmp/config/otel-collector-config.yaml /etc/otel-collector-config.yaml
         echo 'Configuração criada com sucesso!'
       "
     volumes:
-      - otel_config:/etc/otel-collector-config.yaml
+      - otel_config:/etc
     networks:
       - gwan
     restart: "no"
