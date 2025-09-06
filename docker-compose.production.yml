@@ -1,36 +1,4 @@
 services:
-  # Traefik - Reverse Proxy e Load Balancer
-  traefik:
-    image: traefik:v3.0
-    container_name: gwan-traefik
-    command:
-      - "--api.dashboard=true"
-      - "--api.insecure=true"
-      - "--providers.docker=true"
-      - "--providers.docker.exposedbydefault=false"
-      - "--entrypoints.web.address=:80"
-      - "--entrypoints.websecure.address=:443"
-      - "--certificatesresolvers.letsencrypt.acme.tlschallenge=true"
-      - "--certificatesresolvers.letsencrypt.acme.email=admin@gwan.com.br"
-      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
-      - "--certificatesresolvers.letsencrypt.acme.caserver=https://acme-v02.api.letsencrypt.org/directory"
-    ports:
-      - "80:80"
-      - "443:443"
-      - "8080:8080"  # Dashboard Traefik
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - traefik_letsencrypt:/letsencrypt
-    networks:
-      - gwan
-    restart: unless-stopped
-    labels:
-      - "traefik.enable=true"
-      - "traefik.http.routers.traefik.rule=Host(`traefik.gwan.com.br`)"
-      - "traefik.http.routers.traefik.entrypoints=websecure"
-      - "traefik.http.routers.traefik.tls.certresolver=letsencrypt"
-      - "traefik.http.services.traefik.loadbalancer.server.port=8080"
-
   # Elasticsearch - Armazenamento de logs
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.9.1
@@ -337,8 +305,6 @@ volumes:
   alertmanager_data:
     driver: local
   otel_config_volume:
-    driver: local
-  traefik_letsencrypt:
     driver: local
 
 networks:
