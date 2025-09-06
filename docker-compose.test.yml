@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # Elasticsearch - Armazenamento de logs
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.9.1
+    container_name: gwan-elasticsearch-test
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - xpack.security.enrollment.enabled=false
+      - ELASTIC_PASSWORD=GwanLogs2024!
+      - "ES_JAVA_OPTS=-Xms512m -Xmx1g"
+      - ingest.geoip.downloader.enabled=false
+      - cluster.routing.allocation.disk.threshold_enabled=false
+      - bootstrap.memory_lock=false
+    volumes:
+      - es_data_test:/usr/share/elasticsearch/data
+    networks:
+      - gwan-test
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # OpenTelemetry Collector - Coleta de telemetria
+  otel-collector:
+    image: otel/opentelemetry-collector:0.96.0
+    container_name: gwan-otel-collector-test
+    volumes:
+      - ./configs/otel-collector/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
+    ports:
+      - "4317:4317"   # OTLP gRPC - Para aplicações
+      - "4318:4318"   # OTLP HTTP - Para aplicações
+    networks:
+      - gwan-test
+    depends_on:
+      - elasticsearch
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:13133/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Jaeger - Visualização de traces
+  jaeger:
+    image: jaegertracing/all-in-one:1.55.0
+    container_name: gwan-jaeger-test
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+      - QUERY_BASE_PATH=/
+      - SPAN_STORAGE_TYPE=memory
+      - COLLECTOR_ZIPKIN_HOST_PORT=:9411
+    command: [
+      "--collector.otlp.enabled=true",
+      "--collector.otlp.grpc.host-port=0.0.0.0:4317",
+      "--collector.otlp.http.host-port=0.0.0.0:4318",
+      "--query.base-path=/",
+      "--span-storage.type=memory",
+      "--reporter.grpc.host-port=otel-collector:4317"
+    ]
+    networks:
+      - gwan-test
+    depends_on:
+      - otel-collector
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:16686/ || exit 1"]
+      interval: 60s
+      timeout: 30s
+      retries: 5
+      start_period: 120s
+    ports:
+      - "16687:16686"   # Interface Jaeger (16686 interno)
+
+volumes:
+  es_data_test:
+    driver: local
+
+networks:
+  gwan-test:
+    driver: bridge
