@@ -125,24 +125,19 @@ services:
           limit_mib: 256
           spike_limit_mib: 128
 
-      exporters:
-        debug:
-          verbosity: detailed
+        exporters:
+          debug:
+            verbosity: detailed
 
-        otlp:
-          endpoint: jaeger:14250
-          tls:
-            insecure: true
+          prometheus:
+            endpoint: '0.0.0.0:8889'
 
-        prometheus:
-          endpoint: '0.0.0.0:8889'
-
-      service:
-        pipelines:
-          traces:
-            receivers: [otlp]
-            processors: [memory_limiter, batch]
-            exporters: [debug, otlp]
+        service:
+          pipelines:
+            traces:
+              receivers: [otlp]
+              processors: [memory_limiter, batch]
+              exporters: [debug]
 
           metrics:
             receivers: [otlp, prometheus]
@@ -211,8 +206,7 @@ services:
       "--collector.otlp.grpc.host-port=0.0.0.0:4317",
       "--collector.otlp.http.host-port=0.0.0.0:4318",
       "--query.base-path=/",
-      "--span-storage.type=memory",
-      "--reporter.grpc.host-port=otel-collector:4317"
+      "--span-storage.type=memory"
     ]
     networks:
       - gwan
